@@ -9,11 +9,11 @@ Requirements for v1.1 Context Enhancement milestone. Each maps to roadmap phases
 
 ### Icon Sidebar
 
-- [ ] **SIDE-01**: Left pane has 48px vertical icon bar on left edge
-- [ ] **SIDE-02**: Icon bar contains Commands icon and State icon
-- [ ] **SIDE-03**: Clicking icon switches left panel content to corresponding view
-- [ ] **SIDE-04**: Active view shows 2px accent-colored left border indicator
-- [ ] **SIDE-05**: Icons have tooltips on hover showing view name
+- [x] **SIDE-01**: Left pane has 48px vertical icon bar on left edge
+- [x] **SIDE-02**: Icon bar contains Commands icon and State icon
+- [x] **SIDE-03**: Clicking icon switches left panel content to corresponding view
+- [x] **SIDE-04**: Active view shows 2px accent-colored left border indicator
+- [x] **SIDE-05**: Icons have tooltips on hover showing view name
 
 ### Commands Panel
 
@@ -88,11 +88,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIDE-01 | Phase 7 | Pending |
-| SIDE-02 | Phase 7 | Pending |
-| SIDE-03 | Phase 7 | Pending |
-| SIDE-04 | Phase 7 | Pending |
-| SIDE-05 | Phase 7 | Pending |
+| SIDE-01 | Phase 7 | Complete |
+| SIDE-02 | Phase 7 | Complete |
+| SIDE-03 | Phase 7 | Complete |
+| SIDE-04 | Phase 7 | Complete |
+| SIDE-05 | Phase 7 | Complete |
 | VIEW-01 | Phase 8 | Pending |
 | VIEW-02 | Phase 8 | Pending |
 | VIEW-03 | Phase 8 | Pending |

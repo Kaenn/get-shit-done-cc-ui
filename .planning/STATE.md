@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** Terminal-centric workflow enhancement — GSD panel augments Claude Code without disrupting terminal-first experience
-**Current focus:** v1.1 Context Enhancement — Phase 7: Icon Sidebar
+**Current focus:** v1.1 Context Enhancement — Phase 8: Markdown Viewer
 
 ## Current Position
 
-Phase: 7 of 10 (Icon Sidebar)
-Plan: 2 of 2 (Phase complete)
-Status: Phase complete
-Last activity: 2026-01-26 — Completed 07-02-PLAN.md
+Phase: 8 of 10 (Markdown Viewer)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-01-25 — Completed Phase 7: Icon Sidebar
 
-Progress: [██████████░░░░░░░░░░] 61% (20/33 plans)
+Progress: [████████████░░░░░░░░] 61% (20/33 plans)
 
 ## Performance Metrics
 
@@ -61,8 +61,8 @@ From research/SUMMARY.md:
 
 ## Session Continuity
 
-Last session: 2026-01-26
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-01-25
+Stopped at: Completed Phase 7: Icon Sidebar
 Resume file: None
-Status: Phase 7 complete (2 plans)
-Next step: Begin Phase 8 (State Viewer)
+Status: Ready for Phase 8
+Next step: /gsd:discuss-phase 8 or /gsd:plan-phase 8

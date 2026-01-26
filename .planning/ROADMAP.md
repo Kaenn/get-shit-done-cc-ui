@@ -25,7 +25,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 
 **Milestone Goal:** Enhance GSD-UI with better project visualization and smarter command interaction via VSCode-style icon sidebar, state tree, markdown viewer, and command forms.
 
-- [ ] **Phase 7: Icon Sidebar** - VSCode-style vertical icon bar for view switching
+- [x] **Phase 7: Icon Sidebar** - VSCode-style vertical icon bar for view switching (completed 2026-01-25)
 - [ ] **Phase 8: Markdown Viewer** - Tabbed file viewer with frontmatter and syntax highlighting
 - [ ] **Phase 9: State Tree** - Hierarchical milestone/phase/plan tree with actions
 - [ ] **Phase 10: Command Forms** - Smart forms with parameters and flags for GSD commands
@@ -45,8 +45,8 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 **Plans:** 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Core infrastructure: toggle-group dependency, store extension, sidebar component
-- [ ] 07-02-PLAN.md — Integration: wire sidebar into GSDPanel, create state panel placeholder
+- [x] 07-01-PLAN.md — Core infrastructure: toggle-group dependency, store extension, sidebar component
+- [x] 07-02-PLAN.md — Integration: wire sidebar into GSDPanel, create state panel placeholder
 
 ### Phase 8: Markdown Viewer
 
@@ -115,7 +115,7 @@ Plans:
 | 4. Command Panel | v1.0 | 3/3 | Complete | 2026-01-25 |
 | 5. Rebranding | v1.0 | 3/3 | Complete | 2026-01-25 |
 | 6. Conversation View | v1.0 | 4/4 | Complete | 2026-01-25 |
-| 7. Icon Sidebar | v1.1 | 0/2 | Not started | - |
+| 7. Icon Sidebar | v1.1 | 2/2 | Complete | 2026-01-25 |
 | 8. Markdown Viewer | v1.1 | 0/? | Not started | - |
 | 9. State Tree | v1.1 | 0/? | Not started | - |
 | 10. Command Forms | v1.1 | 0/? | Not started | - |
