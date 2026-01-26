@@ -160,22 +160,11 @@ export const GSDTreeNode = React.memo(
             </TooltipProvider>
           )}
 
-          {/* Progress for milestones and phases */}
+          {/* Progress for milestones and phases (x/total format only) */}
           {node.progress && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-muted-foreground">
-                {node.progress.completed}/{node.progress.total}
-              </span>
-              <span className="text-primary font-medium">
-                (
-                {node.progress.total > 0
-                  ? Math.round(
-                      (node.progress.completed / node.progress.total) * 100
-                    )
-                  : 0}
-                %)
-              </span>
-            </div>
+            <span className="text-xs text-muted-foreground">
+              {node.progress.completed}/{node.progress.total}
+            </span>
           )}
         </div>
 
