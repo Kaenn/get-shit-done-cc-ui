@@ -3,7 +3,7 @@
 ## Milestones
 
 - **v1.0 MVP** — Phases 1-6 (shipped 2026-01-25) — [Archive](.planning/milestones/v1.0-ROADMAP.md)
-- **v1.1 Context Enhancement** — Phases 7-10 (in progress)
+- **v1.1 Context Enhancement** — Phases 7-11 (in progress)
 
 ## Phases
 
@@ -29,7 +29,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 - [x] **Phase 8: Markdown Viewer** - Tabbed file viewer with frontmatter and syntax highlighting (completed 2026-01-26)
 - [x] **Phase 9: State Tree** - Hierarchical milestone/phase/plan tree with actions (completed 2026-01-26)
 - [x] **Phase 10: Command Forms** - Smart forms with parameters and flags for GSD commands (completed 2026-01-26)
-- [ ] **Phase 11: npx Installation** - Cross-platform binary distribution via npm for `npx opcode`
+- [ ] **Phase 11: npx Installation** - Cross-platform binary distribution via npm for `npx get-shit-done-cc-ui`
 
 ## Phase Details
 
@@ -111,11 +111,11 @@ Plans:
 
 ### Phase 11: npx Installation
 
-**Goal:** User can install and run opcode via `npx opcode` without Rust toolchain
+**Goal:** User can install and run GSD-UI via `npx get-shit-done-cc-ui` without Rust toolchain
 **Depends on:** None (independent infrastructure phase)
 **Requirements:** NPX-01, NPX-02, NPX-03, NPX-04, NPX-05
 **Success Criteria** (what must be TRUE):
-  1. `npx opcode` works on fresh machine with only Node.js (>=16) installed
+  1. `npx get-shit-done-cc-ui` works on fresh machine with only Node.js (>=16) installed
   2. Binary download completes in <30 seconds on average connection
   3. All P0 platforms supported (Linux x64, macOS x64/arm64, Windows x64)
   4. Version is synchronized across all package manifests automatically
@@ -124,7 +124,7 @@ Plans:
 
 Plans:
 - [ ] 11-01-PLAN.md — Local build validation: build scripts, standalone binary testing
-- [ ] 11-02-PLAN.md — npm package structure: wrapper scripts, postinstall download
+- [ ] 11-02-PLAN.md — npm package structure: wrapper scripts, lazy download on first run
 - [ ] 11-03-PLAN.md — CI/CD pipeline: GitHub Actions workflow for cross-compilation
 - [ ] 11-04-PLAN.md — npm publishing: automated release workflow with tag triggers
 - [ ] 11-05-PLAN.md — Documentation and polish: README updates, version sync script
