@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-25)
 ## Current Position
 
 Phase: 8 of 10 (Markdown Viewer)
-Plan: 2 complete (01, 02, 03 completed out of order)
-Status: In progress
-Last activity: 2026-01-26 — Completed 08-02-PLAN.md (File Viewer Shell)
+Plan: 4 complete (01, 02, 03, 04)
+Status: Wave 3 complete - Phase 8 ready for Phase 9
+Last activity: 2026-01-26 — Completed 08-04-PLAN.md (File Loading Integration)
 
-Progress: [█████████████░░░░░░░] 67% (22/33 plans)
+Progress: [█████████████░░░░░░░] 69% (23/33 plans)
 
 ## Performance Metrics
 
@@ -50,6 +50,8 @@ Recent decisions affecting current work:
 - Frontmatter defaults to collapsed state for content-focused view (08-03)
 - Internal .md links call openFile action for in-app navigation (08-03)
 - External links open in new tab with security attributes (08-03)
+- Content cached in store after first load to avoid re-fetching (08-04)
+- Status state machine pattern for async file loading (idle → loading → ready/error) (08-04)
 
 ### Pending Todos
 
@@ -69,7 +71,7 @@ From research/SUMMARY.md:
 ## Session Continuity
 
 Last session: 2026-01-26
-Stopped at: Completed 08-02-PLAN.md (File Viewer Shell)
+Stopped at: Completed 08-04-PLAN.md (File Loading Integration)
 Resume file: None
-Status: Phase 8 in progress
-Next step: Continue with remaining Phase 8 plans or integrate components
+Status: Phase 8 complete (Wave 3 finished)
+Next step: Begin Phase 9 (State Tree Integration) to provide UI for file selection
