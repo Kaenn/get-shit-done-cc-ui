@@ -15,12 +15,14 @@ export interface TreeNode {
   type: 'milestone' | 'phase' | 'plan';
   label: string; // 'v1.0 MVP', 'Phase 1: Foundation', 'Plan 01: ...'
   status: 'pending' | 'in-progress' | 'complete';
-  filepath?: string; // Path to corresponding file (for viewer integration)
+  filepath?: string; // Path to corresponding file (for viewer integration) - deprecated, use contextFiles
+  contextFiles?: string[]; // Files to open when node is clicked (multiple files)
   archived?: boolean; // true for archived milestones
   progress?: TreeNodeProgress; // For milestones and phases
   metadata?: {
     goal?: string; // Phase or milestone goal
     description?: string; // Plan description (name)
+    phaseDir?: string; // Phase directory name for file path generation
   };
   children?: TreeNode[];
 }
@@ -61,7 +63,21 @@ export function buildTreeData(
     // Create plan TreeNodes as children
     const children: TreeNode[] = phasePlans.map((plan) => {
       const planPadded = plan.planNumber.toString().padStart(2, '0');
-      const planFilename = `${phase.number.toString().padStart(2, '0')}-${planPadded}-PLAN.md`;
+      const phasePadded = phase.number.toString().padStart(2, '0');
+      const planBase = `${phasePadded}-${planPadded}`;
+      const planFilename = `${planBase}-PLAN.md`;
+      const summaryFilename = `${planBase}-SUMMARY.md`;
+
+      // Build context files: PLAN.md always, SUMMARY.md if plan is complete
+      const contextFiles: string[] = [];
+      if (projectPath) {
+        const basePath = `${projectPath}/.planning/phases/${phaseDirName}`;
+        contextFiles.push(`${basePath}/${planFilename}`);
+        // Add SUMMARY.md for completed plans
+        if (plan.status === 'complete') {
+          contextFiles.push(`${basePath}/${summaryFilename}`);
+        }
+      }
 
       return {
         id: `plan-${plan.phaseNumber}-${planPadded}`,
@@ -71,6 +87,7 @@ export function buildTreeData(
         filepath: projectPath
           ? `${projectPath}/.planning/phases/${phaseDirName}/${planFilename}`
           : undefined,
+        contextFiles: contextFiles.length > 0 ? contextFiles : undefined,
         metadata: {
           description: plan.name,
         },
@@ -97,6 +114,19 @@ export function buildTreeData(
       status = 'pending';
     }
 
+    // Build phase context files: CONTEXT.md always, RESEARCH.md and VERIFICATION.md if they exist
+    // Note: We list potential files; the UI will handle missing files gracefully
+    const phaseContextFiles: string[] = [];
+    if (projectPath) {
+      const basePath = `${projectPath}/.planning/phases/${phaseDirName}`;
+      const phasePadded = phase.number.toString().padStart(2, '0');
+      // CONTEXT.md is the primary phase file
+      phaseContextFiles.push(`${basePath}/${phasePadded}-CONTEXT.md`);
+      // RESEARCH.md and VERIFICATION.md are optional
+      phaseContextFiles.push(`${basePath}/${phasePadded}-RESEARCH.md`);
+      phaseContextFiles.push(`${basePath}/${phasePadded}-VERIFICATION.md`);
+    }
+
     return {
       id: `phase-${phase.number}`,
       type: 'phase' as const,
@@ -105,9 +135,11 @@ export function buildTreeData(
       // Phases are directories, not files - don't set filepath
       // Users can click into plans to view individual plan files
       filepath: undefined,
+      contextFiles: phaseContextFiles.length > 0 ? phaseContextFiles : undefined,
       progress,
       metadata: {
         goal: phase.goal,
+        phaseDir: phaseDirName,
       },
       children,
     };
@@ -178,12 +210,21 @@ export function buildMilestoneTree(
       ? undefined
       : `${projectPath}/.planning/ROADMAP.md`;
 
+    // Build milestone context files: ROADMAP.md, STATE.md, REQUIREMENTS.md
+    const milestoneContextFiles: string[] = [];
+    if (!milestone.archived) {
+      milestoneContextFiles.push(`${projectPath}/.planning/ROADMAP.md`);
+      milestoneContextFiles.push(`${projectPath}/.planning/STATE.md`);
+      milestoneContextFiles.push(`${projectPath}/.planning/REQUIREMENTS.md`);
+    }
+
     const milestoneNode: TreeNode = {
       id: `milestone-${milestone.number}`,
       type: 'milestone',
       label: milestone.name,
       status: milestone.status,
       filepath,
+      contextFiles: milestoneContextFiles.length > 0 ? milestoneContextFiles : undefined,
       archived: milestone.archived,
       progress,
       metadata: {

@@ -21,7 +21,7 @@ interface TreeNodeProps {
 
 export const GSDTreeNode = React.memo(
   ({ node, depth, currentPhaseNumber, projectPath, isArchived }: TreeNodeProps) => {
-    const { expandedNodes, toggleNode, openFile } = useGSDStore();
+    const { expandedNodes, toggleNode, openFile, openFiles } = useGSDStore();
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children && node.children.length > 0;
 
@@ -46,6 +46,18 @@ export const GSDTreeNode = React.memo(
 
     // Determine if node should show chevron (has children or action links)
     const hasExpandableContent = hasChildren || actionLinks.length > 0;
+
+    // Determine if node is clickable (has context files or single filepath)
+    const isClickable = (node.contextFiles && node.contextFiles.length > 0) || !!node.filepath;
+
+    // Handle node click - open context files or single file
+    const handleNodeClick = () => {
+      if (node.contextFiles && node.contextFiles.length > 0) {
+        openFiles(node.contextFiles);
+      } else if (node.filepath) {
+        openFile(node.filepath);
+      }
+    };
 
     // Status indicator - colored dot only (per CONTEXT.md: "Color-only status, no icons")
     const StatusDot = ({ status }: { status: 'pending' | 'in-progress' | 'complete' }) => {
@@ -79,9 +91,9 @@ export const GSDTreeNode = React.memo(
           )}
           tabIndex={0}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && node.filepath) {
+            if (e.key === 'Enter' && isClickable) {
               e.preventDefault();
-              openFile(node.filepath);
+              handleNodeClick();
             }
             if (e.key === ' ' && hasExpandableContent) {
               e.preventDefault();
@@ -113,17 +125,17 @@ export const GSDTreeNode = React.memo(
           {/* Status dot - hidden for archived nodes (always complete, no need to show) */}
           {!isArchivedNode && <StatusDot status={node.status} />}
 
-          {/* Node label - click to open file in viewer */}
+          {/* Node label - click to open context files in viewer */}
           <span
             onClick={(e) => {
               e.stopPropagation();
-              if (node.filepath) {
-                openFile(node.filepath);
+              if (isClickable) {
+                handleNodeClick();
               }
             }}
             className={cn(
               'text-sm flex-1 truncate',
-              node.filepath && 'cursor-pointer hover:underline',
+              isClickable && 'cursor-pointer hover:underline',
               node.status === 'complete' && 'text-muted-foreground'
             )}
           >

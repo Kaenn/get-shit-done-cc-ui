@@ -87,6 +87,7 @@ interface GSDState {
 
   // Viewer tab actions
   openFile: (filepath: string) => void;
+  openFiles: (filepaths: string[]) => void;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   updateTabContent: (tabId: string, content: string) => void;
@@ -235,6 +236,40 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
     set({
       openTabs: [...state.openTabs, newTab],
       activeTabId: newTab.id,
+      isPanelVisible: true,
+    });
+  },
+
+  openFiles: (filepaths: string[]) => {
+    if (filepaths.length === 0) return;
+
+    const state = get();
+    let currentTabs = [...state.openTabs];
+    let lastNewTabId: string | null = null;
+
+    for (const filepath of filepaths) {
+      // Check for existing tab with same filepath
+      const existing = currentTabs.find(t => t.filepath === filepath);
+      if (existing) {
+        // Already open, set as active (last one wins)
+        lastNewTabId = existing.id;
+        continue;
+      }
+
+      // Create new tab
+      const newTab: FileTab = {
+        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 7),
+        filepath,
+        title: filepath.split('/').pop() || 'Untitled',
+      };
+      currentTabs.push(newTab);
+      lastNewTabId = newTab.id;
+    }
+
+    // Set first new tab as active, ensure panel visible
+    set({
+      openTabs: currentTabs,
+      activeTabId: lastNewTabId,
       isPanelVisible: true,
     });
   },
