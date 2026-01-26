@@ -32,6 +32,11 @@ export function GSDFileContent({ tab }: GSDFileContentProps) {
     // If content already cached in tab, use it
     if (tab.content) {
       const result = parseMarkdownFile(tab.content);
+      console.log('[GSDFileContent] Parsed from cache:', {
+        hasFrontmatter: result.hasFrontmatter,
+        frontmatterKeys: Object.keys(result.frontmatter),
+        contentPreview: result.content.substring(0, 100),
+      });
       setParsed(result);
       setStatus('ready');
       return;
@@ -50,6 +55,11 @@ export function GSDFileContent({ tab }: GSDFileContentProps) {
 
         // Parse frontmatter
         const result = parseMarkdownFile(content);
+        console.log('[GSDFileContent] Parsed fresh:', {
+          hasFrontmatter: result.hasFrontmatter,
+          frontmatterKeys: Object.keys(result.frontmatter),
+          contentPreview: result.content.substring(0, 100),
+        });
         setParsed(result);
         setStatus('ready');
       } catch (err) {

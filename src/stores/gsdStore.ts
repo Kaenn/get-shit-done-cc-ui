@@ -219,7 +219,8 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
     const existing = state.openTabs.find(t => t.filepath === filepath);
     if (existing) {
       // Switch to existing tab instead of creating duplicate
-      set({ activeTabId: existing.id });
+      // Also ensure panel is visible when opening a file
+      set({ activeTabId: existing.id, isPanelVisible: true });
       return;
     }
 
@@ -230,9 +231,11 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
       title: filepath.split('/').pop() || 'Untitled',
     };
 
+    // Open the file AND ensure the panel is visible
     set({
       openTabs: [...state.openTabs, newTab],
       activeTabId: newTab.id,
+      isPanelVisible: true,
     });
   },
 
