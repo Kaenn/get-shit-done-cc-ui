@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-25)
 ## Current Position
 
 Phase: 9 of 10 (State Tree)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-01-26 — Completed Phase 8: Markdown Viewer
+Plan: 1 of 3
+Status: In progress
+Last activity: 2026-01-26 — Completed 09-01-PLAN.md
 
-Progress: [████████████████░░░░] 73% (24/33 plans)
+Progress: [████████████████░░░░] 76% (25/33 plans)
 
 ## Performance Metrics
 
@@ -52,6 +52,10 @@ Recent decisions affecting current work:
 - External links open in new tab with security attributes (08-03)
 - Content cached in store after first load to avoid re-fetching (08-04)
 - Status state machine pattern for async file loading (idle → loading → ready/error) (08-04)
+- Milestone number derived from version (v1.0=10, v1.1=11) for unique IDs (09-01)
+- Archived detection via 'shipped', 'complete', or '[Archive]' in line (09-01)
+- filepath for archived milestones points to milestones/vX.Y-ROADMAP.md (09-01)
+- Implicit single milestone created when no milestones section exists (09-01)
 
 ### Pending Todos
 
@@ -71,7 +75,7 @@ From research/SUMMARY.md:
 ## Session Continuity
 
 Last session: 2026-01-26
-Stopped at: Completed Phase 8: Markdown Viewer
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
-Status: Ready for Phase 9
-Next step: /gsd:discuss-phase 9 or /gsd:plan-phase 9
+Status: Ready for 09-02-PLAN.md
+Next step: /gsd:execute-plan 09-02
