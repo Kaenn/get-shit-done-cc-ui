@@ -42,11 +42,11 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
   2. User can click Commands or State icons to switch the panel content
   3. User sees a 2px accent-colored left border on the active view icon
   4. User sees tooltip with view name when hovering over icons
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md — Core infrastructure: toggle-group dependency, store extension, sidebar component
+- [ ] 07-02-PLAN.md — Integration: wire sidebar into GSDPanel, create state panel placeholder
 
 ### Phase 8: Markdown Viewer
 
@@ -115,7 +115,7 @@ Plans:
 | 4. Command Panel | v1.0 | 3/3 | Complete | 2026-01-25 |
 | 5. Rebranding | v1.0 | 3/3 | Complete | 2026-01-25 |
 | 6. Conversation View | v1.0 | 4/4 | Complete | 2026-01-25 |
-| 7. Icon Sidebar | v1.1 | 0/? | Not started | - |
+| 7. Icon Sidebar | v1.1 | 0/2 | Not started | - |
 | 8. Markdown Viewer | v1.1 | 0/? | Not started | - |
 | 9. State Tree | v1.1 | 0/? | Not started | - |
 | 10. Command Forms | v1.1 | 0/? | Not started | - |
