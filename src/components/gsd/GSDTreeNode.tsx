@@ -22,7 +22,7 @@ interface TreeNodeProps {
 
 export const GSDTreeNode = React.memo(
   ({ node, depth, currentPhaseNumber, projectPath, isArchived }: TreeNodeProps) => {
-    const { expandedNodes, toggleNode, openFile, openFiles, closeAllTabs } = useGSDStore();
+    const { expandedNodes, toggleNode, openFile, openFiles, closeAllTabs, setViewerContext } = useGSDStore();
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children && node.children.length > 0;
 
@@ -53,6 +53,9 @@ export const GSDTreeNode = React.memo(
 
     // Handle node click - filter existing files and open with tab reset
     const handleNodeClick = useCallback(async () => {
+      // Set viewer context based on node label
+      setViewerContext(node.label);
+
       if (node.contextFiles && node.contextFiles.length > 0) {
         try {
           // Filter to only files that exist
@@ -74,7 +77,7 @@ export const GSDTreeNode = React.memo(
       } else if (node.filepath) {
         openFile(node.filepath);
       }
-    }, [node.contextFiles, node.filepath, openFile, openFiles, closeAllTabs]);
+    }, [node.contextFiles, node.filepath, node.label, openFile, openFiles, closeAllTabs, setViewerContext]);
 
     // Status indicator - colored dot only (per CONTEXT.md: "Color-only status, no icons")
     const StatusDot = ({ status }: { status: 'pending' | 'in-progress' | 'complete' }) => {

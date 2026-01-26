@@ -11,7 +11,7 @@ import { GSDFileContent } from './GSDFileContent';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 export function GSDFileViewer() {
-  const { openTabs, activeTabId, togglePanel } = useGSDStore();
+  const { openTabs, activeTabId, togglePanel, viewerContext } = useGSDStore();
 
   // Find active tab
   const activeTab = openTabs.find(t => t.id === activeTabId);
@@ -21,9 +21,11 @@ export function GSDFileViewer() {
       <div className="h-full flex flex-col bg-background border-l border-border">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-semibold">Viewer</h2>
+          <div className="flex items-center gap-2 min-w-0">
+            <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+            <h2 className="text-sm font-semibold truncate">
+              {viewerContext ? `Viewer: ${viewerContext}` : 'Viewer'}
+            </h2>
           </div>
           <div className="flex items-center gap-2">
             {/* Close Button */}

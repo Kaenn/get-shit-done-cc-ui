@@ -53,6 +53,7 @@ interface GSDState {
   // Viewer tab state (runtime only)
   openTabs: FileTab[];
   activeTabId: string | null;
+  viewerContext: string | null; // Context label shown in viewer title (e.g., "Phase 9")
 
   // Command execution state (runtime only)
   isCommandRunning: boolean;
@@ -92,6 +93,7 @@ interface GSDState {
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   updateTabContent: (tabId: string, content: string) => void;
+  setViewerContext: (context: string | null) => void;
 
   // Command execution actions
   setCommandRunning: (command: string | null) => void;
@@ -129,6 +131,7 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
   // Initial viewer tab state
   openTabs: [],
   activeTabId: null,
+  viewerContext: null as string | null,
 
   // Initial command execution state
   isCommandRunning: false,
@@ -276,7 +279,9 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
     });
   },
 
-  closeAllTabs: () => set({ openTabs: [], activeTabId: null }),
+  closeAllTabs: () => set({ openTabs: [], activeTabId: null, viewerContext: null }),
+
+  setViewerContext: (context: string | null) => set({ viewerContext: context }),
 
   closeTab: (tabId: string) => {
     const state = get();
