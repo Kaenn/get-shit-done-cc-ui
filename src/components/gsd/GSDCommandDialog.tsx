@@ -3,7 +3,7 @@
  * Modal dialog that shows command parameters with React Hook Form + Zod validation
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -17,10 +17,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Toast, ToastContainer } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { useGSDStore } from '@/stores/gsdStore';
-import { api } from '@/lib/api';
+import { executeGSDCommand } from '@/lib/gsd/command-executor';
 import { getSchemaForCommand } from '@/lib/gsd/command-schemas';
+import { readCurrentPhase } from '@/lib/gsd/state-reader';
 
 export function GSDCommandDialog() {
   const {
@@ -30,6 +32,9 @@ export function GSDCommandDialog() {
     closeCommandDialog,
     projectPath,
   } = useGSDStore();
+
+  // Toast state for error notifications
+  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   // Get schema dynamically based on selected command
   const schema = useMemo(() => {
@@ -49,12 +54,31 @@ export function GSDCommandDialog() {
   });
 
   // Reset form values when dialog opens or command changes
+  // Reads STATE.md fresh each time for phase prepopulation
   useEffect(() => {
-    if (commandDialogOpen && selectedCommand) {
+    if (!commandDialogOpen || !selectedCommand) return;
+
+    async function prepopulateForm() {
       const defaultValues: Record<string, string | number | boolean> = {};
 
+      // Check if command has a phase parameter
+      const hasPhaseParam = selectedCommand!.parameters.some(p => p.name === 'phase');
+
+      if (hasPhaseParam && projectPath) {
+        // Read current phase from STATE.md (fresh read, not cached)
+        const currentPhase = await readCurrentPhase(projectPath);
+        if (currentPhase !== null) {
+          defaultValues.phase = currentPhase;
+        }
+      }
+
       // Set default values for parameters
-      selectedCommand.parameters.forEach((param) => {
+      selectedCommand!.parameters.forEach((param) => {
+        // Skip phase if already set from STATE.md
+        if (param.name === 'phase' && defaultValues.phase !== undefined) {
+          return;
+        }
+
         if (commandInitialValues && commandInitialValues[param.name] !== undefined) {
           defaultValues[param.name] = commandInitialValues[param.name];
         } else if (param.defaultValue !== undefined) {
@@ -65,172 +89,175 @@ export function GSDCommandDialog() {
       });
 
       // Set default values for flags (all false by default)
-      selectedCommand.flags.forEach((flag) => {
+      selectedCommand!.flags.forEach((flag) => {
         defaultValues[flag.name] = false;
       });
 
       reset(defaultValues);
     }
-  }, [commandDialogOpen, selectedCommand, commandInitialValues, reset]);
+
+    prepopulateForm();
+  }, [commandDialogOpen, selectedCommand, commandInitialValues, projectPath, reset]);
 
   const onFormSubmit = async (data: Record<string, unknown>) => {
-    if (!selectedCommand || !projectPath) return;
+    if (!selectedCommand || !projectPath) {
+      setErrorToast('Cannot execute: No command or project selected');
+      return;
+    }
 
-    try {
-      // Build parameter values string
-      const paramValues = selectedCommand.parameters
-        .map((param) => {
-          const value = data[param.name];
-          if (value !== undefined && value !== '' && value !== null) {
-            return `${value}`;
-          }
-          return '';
-        })
-        .filter(Boolean)
-        .join(' ');
+    // Clear any previous error toast
+    setErrorToast(null);
 
-      // Build flags string (flags will be handled in Plan 03)
-      // For now, just include active flags from form data
-      const flagValues = selectedCommand.flags
-        .filter((flag) => data[flag.name] === true)
-        .map((flag) => flag.flag)
-        .join(' ');
+    // Cast form data to expected type
+    const formValues = data as Record<string, string | number | boolean | undefined>;
 
-      // Build final command
-      const finalCommand = `${selectedCommand.fullCommand} ${paramValues} ${flagValues}`.trim();
+    // Execute using the command executor utility
+    const result = await executeGSDCommand(projectPath, selectedCommand, formValues);
 
-      // Execute command with /clear prefix
-      await api.executeClaudeCode(projectPath, `/clear\n${finalCommand}`, 'sonnet');
-
-      // Close dialog on success
+    if (result.success) {
+      // Close modal immediately on success
       closeCommandDialog();
-    } catch (error) {
-      console.error('Failed to execute command:', error);
-      // Keep dialog open on error so user can retry
+    } else {
+      // Show toast on error, keep dialog open for retry
+      setErrorToast(result.error || 'Failed to execute command');
     }
   };
 
   if (!selectedCommand) return null;
 
   return (
-    <Dialog open={commandDialogOpen} onOpenChange={closeCommandDialog}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{selectedCommand.label}</DialogTitle>
-          <DialogDescription>{selectedCommand.description}</DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={commandDialogOpen} onOpenChange={closeCommandDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{selectedCommand.label}</DialogTitle>
+            <DialogDescription>{selectedCommand.description}</DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <div className="space-y-4 py-4">
-            {/* Parameter fields */}
-            {selectedCommand.parameters.length > 0 && (
-              <div className="space-y-3">
-                {selectedCommand.parameters.map((param) => {
-                  const fieldError = errors[param.name];
-                  const errorMessage = fieldError?.message as string | undefined;
+          <form onSubmit={handleSubmit(onFormSubmit)}>
+            <div className="space-y-4 py-4">
+              {/* Parameter fields */}
+              {selectedCommand.parameters.length > 0 && (
+                <div className="space-y-3">
+                  {selectedCommand.parameters.map((param) => {
+                    const fieldError = errors[param.name];
+                    const errorMessage = fieldError?.message as string | undefined;
 
-                  return (
-                    <div key={param.name} className="space-y-1.5">
-                      <Label htmlFor={param.name}>
-                        {param.label}
-                        {param.required ? (
-                          <span className="text-red-500 ml-0.5">*</span>
-                        ) : (
-                          <span className="text-muted-foreground ml-1">(optional)</span>
-                        )}
-                      </Label>
-                      <Input
-                        id={param.name}
-                        type={param.type === 'number' ? 'number' : 'text'}
-                        placeholder={param.defaultValue?.toString() || ''}
-                        className={cn(
-                          fieldError && 'border-red-500 focus-visible:ring-red-500'
-                        )}
-                        {...register(param.name, {
-                          valueAsNumber: param.type === 'number',
-                        })}
-                      />
-                      {errorMessage && (
-                        <p className="text-xs text-red-500 mt-1">{errorMessage}</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Flag toggle switches */}
-            {selectedCommand.flags && selectedCommand.flags.length > 0 && (
-              <div className="space-y-3 pt-2 border-t border-border">
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Options
-                </Label>
-                {selectedCommand.flags.map((flag) => (
-                  <Controller
-                    key={flag.name}
-                    name={flag.name}
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1">
-                          <Label
-                            htmlFor={flag.name}
-                            className="text-sm font-normal cursor-pointer"
-                          >
-                            {flag.label}
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            {flag.description}
-                          </p>
-                        </div>
-                        <Switch
-                          id={flag.name}
-                          checked={field.value ?? false}
-                          onCheckedChange={field.onChange}
+                    return (
+                      <div key={param.name} className="space-y-1.5">
+                        <Label htmlFor={param.name}>
+                          {param.label}
+                          {param.required ? (
+                            <span className="text-red-500 ml-0.5">*</span>
+                          ) : (
+                            <span className="text-muted-foreground ml-1">(optional)</span>
+                          )}
+                        </Label>
+                        <Input
+                          id={param.name}
+                          type={param.type === 'number' ? 'number' : 'text'}
+                          placeholder={param.defaultValue?.toString() || ''}
+                          className={cn(
+                            fieldError && 'border-red-500 focus-visible:ring-red-500'
+                          )}
+                          {...register(param.name, {
+                            valueAsNumber: param.type === 'number',
+                          })}
                         />
+                        {errorMessage && (
+                          <p className="text-xs text-red-500 mt-1">{errorMessage}</p>
+                        )}
                       </div>
-                    )}
-                  />
-                ))}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
 
-            {/* No parameters message */}
-            {selectedCommand.parameters.length === 0 &&
-              selectedCommand.flags.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  This command has no configurable parameters.
-                </p>
+              {/* Flag toggle switches */}
+              {selectedCommand.flags && selectedCommand.flags.length > 0 && (
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    Options
+                  </Label>
+                  {selectedCommand.flags.map((flag) => (
+                    <Controller
+                      key={flag.name}
+                      name={flag.name}
+                      control={control}
+                      render={({ field }) => (
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1">
+                            <Label
+                              htmlFor={flag.name}
+                              className="text-sm font-normal cursor-pointer"
+                            >
+                              {flag.label}
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              {flag.description}
+                            </p>
+                          </div>
+                          <Switch
+                            id={flag.name}
+                            checked={field.value ?? false}
+                            onCheckedChange={field.onChange}
+                          />
+                        </div>
+                      )}
+                    />
+                  ))}
+                </div>
               )}
-          </div>
 
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={closeCommandDialog}
-              className={cn(
-                'px-4 py-2 rounded-md text-sm font-medium',
-                'border border-border',
-                'hover:bg-muted transition-colors'
-              )}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={cn(
-                'px-4 py-2 rounded-md text-sm font-medium',
-                'bg-primary text-primary-foreground',
-                'hover:bg-primary/90 transition-colors',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-            >
-              {isSubmitting ? 'Executing...' : 'Execute'}
-            </button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+              {/* No parameters message */}
+              {selectedCommand.parameters.length === 0 &&
+                selectedCommand.flags.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    This command has no configurable parameters.
+                  </p>
+                )}
+            </div>
+
+            <DialogFooter>
+              <button
+                type="button"
+                onClick={closeCommandDialog}
+                className={cn(
+                  'px-4 py-2 rounded-md text-sm font-medium',
+                  'border border-border',
+                  'hover:bg-muted transition-colors'
+                )}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={cn(
+                  'px-4 py-2 rounded-md text-sm font-medium',
+                  'bg-primary text-primary-foreground',
+                  'hover:bg-primary/90 transition-colors',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                {isSubmitting ? 'Executing...' : 'Execute'}
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error toast notification */}
+      <ToastContainer>
+        {errorToast && (
+          <Toast
+            message={errorToast}
+            type="error"
+            duration={5000}
+            onDismiss={() => setErrorToast(null)}
+          />
+        )}
+      </ToastContainer>
+    </>
   );
 }
