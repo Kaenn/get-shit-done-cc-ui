@@ -21,7 +21,7 @@ interface TreeNodeProps {
 
 export const GSDTreeNode = React.memo(
   ({ node, depth, currentPhaseNumber, projectPath }: TreeNodeProps) => {
-    const { expandedNodes, toggleNode, isCommandRunning, setCommandRunning } = useGSDStore();
+    const { expandedNodes, toggleNode, isCommandRunning, setCommandRunning, openFile } = useGSDStore();
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children && node.children.length > 0;
     const isCurrentPhase =
@@ -72,37 +72,56 @@ export const GSDTreeNode = React.memo(
           className={cn(
             'group flex items-center gap-2 py-1.5 px-2 rounded',
             'hover:bg-muted/50 transition-colors',
-            hasChildren && 'cursor-pointer',
             depth > 0 && 'ml-6',
             isCurrentPhase && 'bg-primary/10 border border-primary/30',
             node.status === 'complete' && 'opacity-60'
           )}
-          onClick={() => hasChildren && toggleNode(node.id)}
           tabIndex={0}
           onKeyDown={(e) => {
-            if (hasChildren && (e.key === 'Enter' || e.key === ' ')) {
+            if (e.key === 'Enter' && node.filepath) {
+              e.preventDefault();
+              openFile(node.filepath);
+            }
+            if (e.key === ' ' && hasChildren) {
               e.preventDefault();
               toggleNode(node.id);
             }
           }}
         >
-          {/* Chevron for expandable nodes */}
+          {/* Chevron for expandable nodes - click to expand/collapse */}
           {hasChildren ? (
-            <ChevronRight
-              className={cn(
-                'w-4 h-4 transition-transform flex-shrink-0',
-                isExpanded && 'rotate-90'
-              )}
-            />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNode(node.id);
+              }}
+              className="p-0.5 -m-0.5 rounded hover:bg-muted"
+              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronRight
+                className={cn(
+                  'w-4 h-4 transition-transform flex-shrink-0',
+                  isExpanded && 'rotate-90'
+                )}
+              />
+            </button>
           ) : (
             <div className="w-4" /> // Spacer for alignment
           )}
 
           <StatusDot status={node.status} />
 
+          {/* Node label - click to open file in viewer */}
           <span
+            onClick={(e) => {
+              e.stopPropagation();
+              if (node.filepath) {
+                openFile(node.filepath);
+              }
+            }}
             className={cn(
               'text-sm flex-1 truncate',
+              node.filepath && 'cursor-pointer hover:underline',
               node.status === 'complete' && 'text-muted-foreground'
             )}
           >
