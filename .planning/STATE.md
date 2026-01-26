@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-25)
 ## Current Position
 
 Phase: 8 of 10 (Markdown Viewer)
-Plan: 1 of TBD
+Plan: 3 of TBD
 Status: In progress
-Last activity: 2026-01-26 — Completed 08-01-PLAN.md
+Last activity: 2026-01-26 — Completed 08-03-PLAN.md (Markdown Rendering Components)
 
-Progress: [████████████░░░░░░░░] 64% (21/33 plans)
+Progress: [█████████████░░░░░░░] 67% (22/33 plans)
 
 ## Performance Metrics
 
@@ -46,6 +46,10 @@ Recent decisions affecting current work:
 - Tab state is runtime-only (not persisted across app restarts) (08-01)
 - Duplicate filepath detection prevents multiple tabs for same file (08-01)
 - Closing active tab auto-selects adjacent tab (prefer right, fallback left) (08-01)
+- Code blocks use copy button appearing on hover for cleaner UI (08-03)
+- Frontmatter defaults to collapsed state for content-focused view (08-03)
+- Internal .md links call openFile action for in-app navigation (08-03)
+- External links open in new tab with security attributes (08-03)
 
 ### Pending Todos
 
@@ -65,7 +69,7 @@ From research/SUMMARY.md:
 ## Session Continuity
 
 Last session: 2026-01-26
-Stopped at: Completed 08-01-PLAN.md
+Stopped at: Completed 08-03-PLAN.md (Markdown Rendering Components)
 Resume file: None
 Status: Phase 8 in progress
-Next step: Continue with 08-02 (Tab Bar UI) or plan next phase task
+Next step: Continue with remaining Phase 8 plans (tab bar UI, viewer integration)
