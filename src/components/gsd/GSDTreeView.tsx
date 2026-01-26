@@ -14,16 +14,17 @@ interface GSDTreeViewProps {
 }
 
 export function GSDTreeView({ projectPath }: GSDTreeViewProps) {
-  const { treeData, archivedTreeData, parsedData, initializeExpanded } = useGSDStore();
+  const { treeData, archivedTreeData, parsedData, milestoneData, initializeExpanded } = useGSDStore();
   const [archivedExpanded, setArchivedExpanded] = useState(false);
 
-  // Extract currentPhaseNumber from parsedData (set by useGSDData from STATE.md)
+  // Extract currentPhaseNumber and currentPlanNumber from parsedData (set by useGSDData from STATE.md)
   const currentPhaseNumber = parsedData?.currentPhase ?? 1;
+  const currentPlanNumber = parsedData?.currentPlan ?? 1;
 
-  // Initialize expanded state on first load - expand current phase by default
+  // Initialize expanded state on first load - expand current milestone and phase
   useEffect(() => {
-    initializeExpanded(currentPhaseNumber);
-  }, [currentPhaseNumber, initializeExpanded]);
+    initializeExpanded(currentPhaseNumber, currentPlanNumber, milestoneData);
+  }, [currentPhaseNumber, currentPlanNumber, milestoneData, initializeExpanded]);
 
   if (!treeData || treeData.length === 0) {
     return null;

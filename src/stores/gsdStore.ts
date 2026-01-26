@@ -79,7 +79,7 @@ interface GSDState {
   setTreeData: (data: TreeNode[]) => void;
   setArchivedTreeData: (data: TreeNode[]) => void;
   toggleNode: (nodeId: string) => void;
-  initializeExpanded: (currentPhaseNumber: number) => void;
+  initializeExpanded: (currentPhaseNumber: number, currentPlanNumber?: number, milestoneData?: MilestoneInfo[]) => void;
   setHasHydrated: (value: boolean) => void;
   setLoading: (value: boolean) => void;
   setError: (error: string | null) => void;
@@ -182,10 +182,27 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
       return { expandedNodes: newExpanded };
     }),
 
-  initializeExpanded: (currentPhaseNumber: number) =>
-    set(() => ({
-      expandedNodes: new Set([`phase-${currentPhaseNumber}`]),
-    })),
+  initializeExpanded: (currentPhaseNumber: number, currentPlanNumber?: number, milestoneData?: MilestoneInfo[]) =>
+    set(() => {
+      const expandedSet = new Set<string>();
+
+      // Always expand current phase
+      expandedSet.add(`phase-${currentPhaseNumber}`);
+
+      // Find and expand current milestone (the one containing current phase)
+      if (milestoneData) {
+        const currentMilestone = milestoneData.find(
+          m => !m.archived &&
+               currentPhaseNumber >= m.phaseRange.start &&
+               currentPhaseNumber <= m.phaseRange.end
+        );
+        if (currentMilestone) {
+          expandedSet.add(`milestone-${currentMilestone.number}`);
+        }
+      }
+
+      return { expandedNodes: expandedSet };
+    }),
 
   setHasHydrated: (value: boolean) => set({ hasHydrated: value }),
 
