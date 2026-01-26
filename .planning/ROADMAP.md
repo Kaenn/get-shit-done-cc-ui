@@ -79,13 +79,13 @@ Plans:
   4. User can click a node to open its corresponding file in the viewer
   5. User sees inline action buttons (execute, plan) on nodes based on status
   6. User can view archived milestones in a separate collapsed section
-  7. User can right-click nodes to see context menu with available actions
-**Plans:** TBD
+  7. Right-click context menu replaced by inline actions (per CONTEXT.md decision)
+**Plans:** 3 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
-- [ ] 09-03: TBD
+- [ ] 09-01-PLAN.md — Data layer: MilestoneInfo type, parser, 3-level tree transforms with filepath
+- [ ] 09-02-PLAN.md — Visual refinement: status dots, file opening on click, milestone rendering
+- [ ] 09-03-PLAN.md — Archived section and integration: GSDArchivedSection, GSDStatePanel wiring
 
 ### Phase 10: Command Forms
 
@@ -118,5 +118,5 @@ Plans:
 | 6. Conversation View | v1.0 | 4/4 | Complete | 2026-01-25 |
 | 7. Icon Sidebar | v1.1 | 2/2 | Complete | 2026-01-25 |
 | 8. Markdown Viewer | v1.1 | 4/4 | Complete | 2026-01-26 |
-| 9. State Tree | v1.1 | 0/? | Not started | - |
+| 9. State Tree | v1.1 | 0/3 | Not started | - |
 | 10. Command Forms | v1.1 | 0/? | Not started | - |
