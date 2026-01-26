@@ -9,7 +9,7 @@ import { ThreePane } from '@/components/ui/three-pane';
 import { GSDCommandPanel } from './GSDCommandPanel';
 import { GSDStatePanel } from './GSDStatePanel';
 import { GSDIconSidebar } from './GSDIconSidebar';
-import { GSDPanelContent } from './GSDPanelContent';
+import { GSDFileViewer } from './viewer/GSDFileViewer';
 import { GSDToggleButton } from './GSDToggleButton';
 import { GSDCommandToggleButton } from './GSDCommandToggleButton';
 import { GSDCommandDialog } from './GSDCommandDialog';
@@ -56,7 +56,7 @@ export function GSDPanel({ children }: GSDPanelProps) {
           </div>
         }
         center={children}
-        right={<GSDPanelContent />}
+        right={<GSDFileViewer />}
         leftWidth={commandPanelWidth}
         rightWidth={panelWidth}
         showLeft={isCommandPanelVisible}
