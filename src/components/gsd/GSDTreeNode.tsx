@@ -1,6 +1,6 @@
 /**
  * Recursive tree node component for GSD visualization
- * Renders phases and plans with expand/collapse, status dots, and progress
+ * Renders milestones, phases, and plans with expand/collapse, status dots, and progress
  */
 
 import React from 'react';
@@ -17,13 +17,19 @@ interface TreeNodeProps {
   depth: number;
   currentPhaseNumber: number;
   projectPath: string | null;
+  isArchived?: boolean; // Inherited from parent for styling
 }
 
 export const GSDTreeNode = React.memo(
-  ({ node, depth, currentPhaseNumber, projectPath }: TreeNodeProps) => {
+  ({ node, depth, currentPhaseNumber, projectPath, isArchived }: TreeNodeProps) => {
     const { expandedNodes, toggleNode, isCommandRunning, setCommandRunning, openFile } = useGSDStore();
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children && node.children.length > 0;
+
+    // Determine if this node or its ancestry is archived
+    const isArchivedNode = node.archived || isArchived;
+
+    // Highlight current phase
     const isCurrentPhase =
       node.type === 'phase' && node.id === `phase-${currentPhaseNumber}`;
 
@@ -71,10 +77,11 @@ export const GSDTreeNode = React.memo(
         <div
           className={cn(
             'group flex items-center gap-2 py-1.5 px-2 rounded',
-            'hover:bg-muted/50 transition-colors',
+            !isArchivedNode && 'hover:bg-muted/50 transition-colors',
             depth > 0 && 'ml-6',
             isCurrentPhase && 'bg-primary/10 border border-primary/30',
-            node.status === 'complete' && 'opacity-60'
+            isArchivedNode && 'opacity-60 cursor-default',
+            !isArchivedNode && node.status === 'complete' && 'opacity-60'
           )}
           tabIndex={0}
           onKeyDown={(e) => {
@@ -153,7 +160,7 @@ export const GSDTreeNode = React.memo(
             </TooltipProvider>
           )}
 
-          {/* Progress for phases */}
+          {/* Progress for milestones and phases */}
           {node.progress && (
             <div className="flex items-center gap-1.5 text-xs">
               <span className="text-muted-foreground">
@@ -187,6 +194,7 @@ export const GSDTreeNode = React.memo(
                   depth={depth + 1}
                   currentPhaseNumber={currentPhaseNumber}
                   projectPath={projectPath}
+                  isArchived={isArchivedNode}
                 />
               </div>
             ))}
