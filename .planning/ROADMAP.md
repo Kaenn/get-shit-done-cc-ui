@@ -26,7 +26,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 **Milestone Goal:** Enhance GSD-UI with better project visualization and smarter command interaction via VSCode-style icon sidebar, state tree, markdown viewer, and command forms.
 
 - [x] **Phase 7: Icon Sidebar** - VSCode-style vertical icon bar for view switching (completed 2026-01-25)
-- [ ] **Phase 8: Markdown Viewer** - Tabbed file viewer with frontmatter and syntax highlighting
+- [x] **Phase 8: Markdown Viewer** - Tabbed file viewer with frontmatter and syntax highlighting (completed 2026-01-26)
 - [ ] **Phase 9: State Tree** - Hierarchical milestone/phase/plan tree with actions
 - [ ] **Phase 10: Command Forms** - Smart forms with parameters and flags for GSD commands
 
@@ -62,10 +62,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Core infrastructure: gray-matter dependency, store extension with tab management
-- [ ] 08-02-PLAN.md — Viewer shell: GSDFileViewer container, scrollable tabs, GSDPanel integration
-- [ ] 08-03-PLAN.md — Content rendering: markdown renderer, frontmatter display, code blocks with copy
-- [ ] 08-04-PLAN.md — Integration: file loading via Tauri fs, wire content rendering into viewer
+- [x] 08-01-PLAN.md — Core infrastructure: gray-matter dependency, store extension with tab management
+- [x] 08-02-PLAN.md — Viewer shell: GSDFileViewer container, scrollable tabs, GSDPanel integration
+- [x] 08-03-PLAN.md — Content rendering: markdown renderer, frontmatter display, code blocks with copy
+- [x] 08-04-PLAN.md — Integration: file loading via Tauri fs, wire content rendering into viewer
 
 ### Phase 9: State Tree
 
@@ -117,6 +117,6 @@ Plans:
 | 5. Rebranding | v1.0 | 3/3 | Complete | 2026-01-25 |
 | 6. Conversation View | v1.0 | 4/4 | Complete | 2026-01-25 |
 | 7. Icon Sidebar | v1.1 | 2/2 | Complete | 2026-01-25 |
-| 8. Markdown Viewer | v1.1 | 0/4 | Planned | - |
+| 8. Markdown Viewer | v1.1 | 4/4 | Complete | 2026-01-26 |
 | 9. State Tree | v1.1 | 0/? | Not started | - |
 | 10. Command Forms | v1.1 | 0/? | Not started | - |
