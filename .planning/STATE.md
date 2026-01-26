@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** Terminal-centric workflow enhancement — GSD panel augments Claude Code without disrupting terminal-first experience
-**Current focus:** Planning next milestone
+**Current focus:** v1.1 Context Enhancement — Researching
 
 ## Current Position
 
-Phase: Complete (6 of 6)
-Plan: Complete (18 of 18)
-Status: v1.0 MVP SHIPPED
-Last activity: 2026-01-25 — Milestone v1.0 archived
+Phase: Not started (researching)
+Plan: —
+Status: Researching v1.1 features
+Last activity: 2026-01-25 — Milestone v1.1 started
 
-Progress: [===============] 100% (v1.0)
+Progress: [░░░░░░░░░░░░░░░] 0% (v1.1)
 
 ## Performance Metrics
 
@@ -29,7 +29,6 @@ Progress: [===============] 100% (v1.0)
 ### Decisions
 
 Key decisions are logged in PROJECT.md Key Decisions table.
-All v1.0 decisions marked with outcomes.
 
 ### Pending Todos
 
@@ -39,20 +38,18 @@ None.
 
 None.
 
-### Roadmap Evolution
+### v1.1 Scope
 
-v1.0 shipped with 6 phases:
-- Phase 1: Foundation
-- Phase 2: Visualization
-- Phase 3: Interactivity
-- Phase 4: Command Panel
-- Phase 5: Rebranding
-- Phase 6: Conversation View
+Target features:
+- Left icon bar (VSCode-style) switching between Commands and State views
+- Commands panel with all 27 commands in 7 categories, smart forms with flags
+- State tree showing current milestone hierarchy + archived milestones
+- Right pane state file viewer with tabs, frontmatter, and markdown rendering
 
 ## Session Continuity
 
 Last session: 2026-01-25
-Stopped at: v1.0 milestone completion
+Stopped at: Research phase for v1.1
 Resume file: None
-Status: Ready for next milestone
-Next step: `/gsd:new-milestone` to start v1.1 planning
+Status: Researching
+Next step: Complete research → define requirements → create roadmap
