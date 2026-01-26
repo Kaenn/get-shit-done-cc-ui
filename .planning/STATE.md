@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-25)
 ## Current Position
 
 Phase: 11 of 11 (npx-installation)
-Plan: 02 of 05 complete
+Plan: 01 of 05 complete
 Status: In progress
-Last activity: 2026-01-26 — Completed 11-02-PLAN.md
+Last activity: 2026-01-26 — Completed 11-01-PLAN.md
 
 Progress: [███████████████████████] 100% (33/33 plans)
 
@@ -83,6 +83,8 @@ Recent decisions affecting current work:
 - Toast state local to dialog component (not global store) (10-05)
 - 5 second toast duration for error messages (10-05)
 - Keep dialog open on error for retry (10-05)
+- Build script for local validation only; CI uses houseabsolute/actions-rust-cross (11-01)
+- Binary size 2.5MB validates release profile optimizations (opt-level=z, lto=true, strip=symbols) (11-01)
 - Lazy download over postinstall: first run downloads and exits, second run executes (11-02)
 - WSL detection via /proc/version parsing for automatic Linux binary selection (11-02)
 - crypto.timingSafeEqual for checksum comparison to prevent timing attacks (11-02)
@@ -106,8 +108,8 @@ From research/SUMMARY.md:
 
 ## Session Continuity
 
-Last session: 2026-01-26T19:12:17Z
-Stopped at: Completed 11-02-PLAN.md (npm package structure)
+Last session: 2026-01-26T19:20:54Z
+Stopped at: Completed 11-01-PLAN.md (web binary build validation)
 Resume file: None
-Status: Phase 11 in progress (2/5 plans complete)
-Next step: /gsd:execute-phase 11 03 (GitHub Actions workflow)
+Status: Phase 11 in progress (1/5 plans complete)
+Next step: /gsd:execute-phase 11 02 (npm package structure)
