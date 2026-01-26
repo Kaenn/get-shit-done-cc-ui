@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** Terminal-centric workflow enhancement — GSD panel augments Claude Code without disrupting terminal-first experience
-**Current focus:** v1.1 Context Enhancement — Researching
+**Current focus:** v1.1 Context Enhancement — Phase 7: Icon Sidebar
 
 ## Current Position
 
-Phase: Not started (researching)
-Plan: —
-Status: Researching v1.1 features
-Last activity: 2026-01-25 — Milestone v1.1 started
+Phase: 7 of 10 (Icon Sidebar)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-01-25 — Roadmap created for v1.1
 
-Progress: [░░░░░░░░░░░░░░░] 0% (v1.1)
+Progress: [██████████░░░░░░░░░░] 55% (18/33 plans, v1.0 complete)
 
 ## Performance Metrics
 
@@ -22,13 +22,22 @@ Progress: [░░░░░░░░░░░░░░░] 0% (v1.1)
 - Total plans completed: 18
 - Total execution time: ~2h 37min
 - Average duration: ~8 minutes per plan
-- Timeline: 2 days (2026-01-24 → 2026-01-25)
+- Timeline: 2 days (2026-01-24 to 2026-01-25)
+
+**v1.1 Estimates:**
+- Phases: 4 (7-10)
+- Requirements: 27
+- Plan count: TBD (estimated 8-11 plans)
 
 ## Accumulated Context
 
 ### Decisions
 
 Key decisions are logged in PROJECT.md Key Decisions table.
+
+Recent decisions affecting current work:
+- v1.1 ordered phases: Sidebar (7) > Viewer (8) > Tree (9) > Commands (10)
+- Viewer before Tree because tree-click-to-view depends on viewer
 
 ### Pending Todos
 
@@ -38,18 +47,17 @@ None.
 
 None.
 
-### v1.1 Scope
+### v1.1 Research Summary
 
-Target features:
-- Left icon bar (VSCode-style) switching between Commands and State views
-- Commands panel with all 27 commands in 7 categories, smart forms with flags
-- State tree showing current milestone hierarchy + archived milestones
-- Right pane state file viewer with tabs, frontmatter, and markdown rendering
+From research/SUMMARY.md:
+- New dependencies: gray-matter (frontmatter), @radix-ui/react-toggle-group (sidebar)
+- Key pitfalls: z-index collisions (Phase 7), XSS in markdown (Phase 8), stale closures (Phase 10)
+- Confidence: HIGH
 
 ## Session Continuity
 
 Last session: 2026-01-25
-Stopped at: Research phase for v1.1
+Stopped at: Roadmap created for v1.1
 Resume file: None
-Status: Researching
-Next step: Complete research → define requirements → create roadmap
+Status: Ready to plan Phase 7
+Next step: /gsd:plan-phase 7

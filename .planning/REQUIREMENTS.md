@@ -88,39 +88,39 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIDE-01 | Pending | Pending |
-| SIDE-02 | Pending | Pending |
-| SIDE-03 | Pending | Pending |
-| SIDE-04 | Pending | Pending |
-| SIDE-05 | Pending | Pending |
-| CMD-01 | Pending | Pending |
-| CMD-02 | Pending | Pending |
-| CMD-03 | Pending | Pending |
-| CMD-04 | Pending | Pending |
-| CMD-05 | Pending | Pending |
-| CMD-06 | Pending | Pending |
-| CMD-07 | Pending | Pending |
-| TREE-01 | Pending | Pending |
-| TREE-02 | Pending | Pending |
-| TREE-03 | Pending | Pending |
-| TREE-04 | Pending | Pending |
-| TREE-05 | Pending | Pending |
-| TREE-06 | Pending | Pending |
-| TREE-07 | Pending | Pending |
-| TREE-08 | Pending | Pending |
-| TREE-09 | Pending | Pending |
-| VIEW-01 | Pending | Pending |
-| VIEW-02 | Pending | Pending |
-| VIEW-03 | Pending | Pending |
-| VIEW-04 | Pending | Pending |
-| VIEW-05 | Pending | Pending |
-| VIEW-06 | Pending | Pending |
+| SIDE-01 | Phase 7 | Pending |
+| SIDE-02 | Phase 7 | Pending |
+| SIDE-03 | Phase 7 | Pending |
+| SIDE-04 | Phase 7 | Pending |
+| SIDE-05 | Phase 7 | Pending |
+| VIEW-01 | Phase 8 | Pending |
+| VIEW-02 | Phase 8 | Pending |
+| VIEW-03 | Phase 8 | Pending |
+| VIEW-04 | Phase 8 | Pending |
+| VIEW-05 | Phase 8 | Pending |
+| VIEW-06 | Phase 8 | Pending |
+| TREE-01 | Phase 9 | Pending |
+| TREE-02 | Phase 9 | Pending |
+| TREE-03 | Phase 9 | Pending |
+| TREE-04 | Phase 9 | Pending |
+| TREE-05 | Phase 9 | Pending |
+| TREE-06 | Phase 9 | Pending |
+| TREE-07 | Phase 9 | Pending |
+| TREE-08 | Phase 9 | Pending |
+| TREE-09 | Phase 9 | Pending |
+| CMD-01 | Phase 10 | Pending |
+| CMD-02 | Phase 10 | Pending |
+| CMD-03 | Phase 10 | Pending |
+| CMD-04 | Phase 10 | Pending |
+| CMD-05 | Phase 10 | Pending |
+| CMD-06 | Phase 10 | Pending |
+| CMD-07 | Phase 10 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 (pending roadmap)
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-25*
-*Last updated: 2026-01-25 after initial definition*
+*Last updated: 2026-01-25 after roadmap creation*
