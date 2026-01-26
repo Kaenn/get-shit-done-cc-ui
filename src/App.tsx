@@ -26,6 +26,7 @@ import { TabContent } from "@/components/TabContent";
 import { useTabState } from "@/hooks/useTabState";
 import { useAppLifecycle, useTrackEvent } from "@/hooks";
 import { StartupIntro } from "@/components/StartupIntro";
+import { Attribution } from "@/components/Attribution";
 
 type View = 
   | "welcome" 
@@ -247,7 +248,7 @@ function AppContent() {
               >
                 <h1 className="text-4xl font-bold tracking-tight">
                   <span className="rotating-symbol"></span>
-                  Welcome to opcode
+                  Welcome to GSD-UI
                 </h1>
               </motion.div>
 
@@ -376,7 +377,7 @@ function AppContent() {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col pb-6">
       {/* Custom Titlebar */}
       <CustomTitlebar
         onAgentsClick={() => createAgentsTab()}
@@ -403,6 +404,9 @@ function AppContent() {
       <div className="flex-1 overflow-hidden">
         {renderContent()}
       </div>
+
+      {/* Attribution Bar */}
+      <Attribution />
       
       {/* NFO Credits Modal */}
       {showNFO && <NFOCredits onClose={() => setShowNFO(false)} />}

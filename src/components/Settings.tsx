@@ -675,7 +675,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       <div className="space-y-1">
                         <Label htmlFor="analytics-enabled">Enable Analytics</Label>
                         <p className="text-caption text-muted-foreground">
-                          Help improve opcode by sharing anonymous usage data
+                          Help improve GSD-UI by sharing anonymous usage data
                         </p>
                       </div>
                       <Switch

@@ -15,11 +15,11 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       comment: '#6b7280',
       punctuation: '#9ca3af',
       property: '#f59e0b', // Amber/Orange
-      tag: '#8b5cf6', // Violet
+      tag: '#06b6d4', // Cyan-500
       string: '#10b981', // Emerald Green
       function: '#818cf8', // Indigo
-      keyword: '#c084fc', // Light Violet
-      variable: '#a78bfa', // Light Purple
+      keyword: '#22d3ee', // Cyan-400
+      variable: '#67e8f9', // Cyan-300
       operator: '#9ca3af',
     },
     gray: {
@@ -28,11 +28,11 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       comment: '#71717a',
       punctuation: '#a1a1aa',
       property: '#fbbf24', // Yellow
-      tag: '#a78bfa', // Light Purple
+      tag: '#22d3ee', // Cyan-400
       string: '#34d399', // Green
       function: '#93bbfc', // Light Blue
-      keyword: '#d8b4fe', // Light Purple
-      variable: '#c084fc', // Purple
+      keyword: '#67e8f9', // Cyan-300
+      variable: '#a5f3fc', // Cyan-200
       operator: '#a1a1aa',
     },
     light: {
@@ -41,11 +41,11 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       comment: '#9ca3af',
       punctuation: '#6b7280',
       property: '#dc2626', // Red
-      tag: '#7c3aed', // Purple
+      tag: '#0891b2', // Cyan-600
       string: '#059669', // Green
       function: '#2563eb', // Blue
-      keyword: '#9333ea', // Purple
-      variable: '#8b5cf6', // Violet
+      keyword: '#0e7490', // Cyan-700
+      variable: '#06b6d4', // Cyan-500
       operator: '#6b7280',
     },
     white: {
@@ -54,11 +54,11 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       comment: '#6b7280',
       punctuation: '#374151',
       property: '#dc2626', // Red
-      tag: '#5b21b6', // Deep Purple
+      tag: '#155e75', // Cyan-800
       string: '#047857', // Dark Green
       function: '#1e40af', // Dark Blue
-      keyword: '#6b21a8', // Dark Purple
-      variable: '#6d28d9', // Dark Violet
+      keyword: '#164e63', // Cyan-900
+      variable: '#0e7490', // Cyan-700
       operator: '#374151',
     },
     custom: {
@@ -68,11 +68,11 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       comment: '#6b7280',
       punctuation: '#9ca3af',
       property: '#f59e0b',
-      tag: '#8b5cf6',
+      tag: '#06b6d4', // Cyan-500
       string: '#10b981',
       function: '#818cf8',
-      keyword: '#c084fc',
-      variable: '#a78bfa',
+      keyword: '#22d3ee', // Cyan-400
+      variable: '#67e8f9', // Cyan-300
       operator: '#9ca3af',
     }
   };
@@ -124,9 +124,9 @@ export const getClaudeSyntaxTheme = (theme: ThemeMode): any => {
       overflow: 'auto',
     },
     ':not(pre) > code[class*="language-"]': {
-      background: theme === 'light' 
-        ? 'rgba(139, 92, 246, 0.1)' 
-        : 'rgba(139, 92, 246, 0.1)',
+      background: theme === 'light'
+        ? 'rgba(6, 182, 212, 0.1)'
+        : 'rgba(6, 182, 212, 0.1)',
       padding: '0.1em 0.3em',
       borderRadius: '0.3em',
       whiteSpace: 'normal',

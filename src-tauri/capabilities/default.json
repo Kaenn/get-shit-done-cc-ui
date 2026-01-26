@@ -33,16 +33,26 @@
     },
     "fs:default",
     "fs:allow-mkdir",
-    "fs:allow-read",
-    "fs:allow-write",
     "fs:allow-remove",
     "fs:allow-rename",
     "fs:allow-exists",
     "fs:allow-copy-file",
-    "fs:read-all",
-    "fs:write-all",
-    "fs:scope-app-recursive",
-    "fs:scope-home-recursive",
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-stat",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "$HOME/**" }]
+    },
     "http:default",
     "http:allow-fetch",
     "process:default",

@@ -2,8 +2,10 @@ import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { StreamMessage } from '../StreamMessage';
+import { ConversationMessage } from '../conversation';
 import { Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCollapseState } from '@/hooks/useCollapseState';
 import type { ClaudeStreamMessage } from '../AgentExecution';
 
 interface MessageListProps {
@@ -24,6 +26,9 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const userHasScrolledRef = useRef(false);
+
+  // Collapse state for WhatsApp-style message expansion
+  const { isExpanded, toggleMessage } = useCollapseState(messages.length);
 
   // Virtual scrolling setup
   const virtualizer = useVirtualizer({
@@ -123,12 +128,24 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
               >
-                <div className="px-4 py-2">
-                  <StreamMessage 
+                <div className={cn(
+                  "px-4 py-1",
+                  virtualItem.index === 0 && "pt-4"
+                )}>
+                  <ConversationMessage
                     message={message}
+                    isExpanded={isExpanded(virtualItem.index)}
+                    onToggle={() => toggleMessage(virtualItem.index)}
+                    isLatest={virtualItem.index === messages.length - 1}
                     streamMessages={messages}
-                    onLinkDetected={onLinkDetected}
-                  />
+                  >
+                    <StreamMessage
+                      message={message}
+                      streamMessages={messages}
+                      onLinkDetected={onLinkDetected}
+                      disableCard={true}
+                    />
+                  </ConversationMessage>
                 </div>
               </motion.div>
             );

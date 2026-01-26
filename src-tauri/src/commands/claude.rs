@@ -2188,6 +2188,137 @@ pub async fn validate_hook_command(command: String) -> Result<serde_json::Value,
     }
 }
 
+/// Response structure for GSD planning files
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GsdPlanningFiles {
+    pub state_content: Option<String>,
+    pub roadmap_content: Option<String>,
+}
+
+/// Reads GSD planning files (STATE.md and ROADMAP.md) from a project's .planning directory
+#[tauri::command]
+pub async fn read_gsd_planning_files(project_path: String) -> Result<GsdPlanningFiles, String> {
+    log::info!("Reading GSD planning files from: {}", project_path);
+
+    let base_path = PathBuf::from(&project_path).join(".planning");
+
+    let state_path = base_path.join("STATE.md");
+    let roadmap_path = base_path.join("ROADMAP.md");
+
+    let state_content = if state_path.exists() {
+        Some(fs::read_to_string(&state_path)
+            .map_err(|e| format!("Failed to read STATE.md: {}", e))?)
+    } else {
+        None
+    };
+
+    let roadmap_content = if roadmap_path.exists() {
+        Some(fs::read_to_string(&roadmap_path)
+            .map_err(|e| format!("Failed to read ROADMAP.md: {}", e))?)
+    } else {
+        None
+    };
+
+    Ok(GsdPlanningFiles {
+        state_content,
+        roadmap_content,
+    })
+}
+
+/// Gets the modification times of GSD planning files for change detection
+#[tauri::command]
+pub async fn get_gsd_file_stats(project_path: String) -> Result<(Option<u64>, Option<u64>), String> {
+    let base_path = PathBuf::from(&project_path).join(".planning");
+
+    let state_path = base_path.join("STATE.md");
+    let roadmap_path = base_path.join("ROADMAP.md");
+
+    let state_mtime = if state_path.exists() {
+        fs::metadata(&state_path)
+            .ok()
+            .and_then(|m| m.modified().ok())
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+    } else {
+        None
+    };
+
+    let roadmap_mtime = if roadmap_path.exists() {
+        fs::metadata(&roadmap_path)
+            .ok()
+            .and_then(|m| m.modified().ok())
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+    } else {
+        None
+    };
+
+    Ok((state_mtime, roadmap_mtime))
+}
+
+/// Response structure for plan file data
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlanFileData {
+    pub content: String,
+    pub has_summary: bool,
+    pub phase_dir: String,
+    pub filename: String,
+}
+
+/// Reads all PLAN.md files from .planning/phases/ subdirectories
+#[tauri::command]
+pub async fn read_gsd_plan_files(project_path: String) -> Result<Vec<PlanFileData>, String> {
+    log::info!("Reading GSD plan files from: {}", project_path);
+
+    let phases_path = PathBuf::from(&project_path).join(".planning").join("phases");
+
+    if !phases_path.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut plan_files = Vec::new();
+
+    // Read phase directories
+    let entries = fs::read_dir(&phases_path)
+        .map_err(|e| format!("Failed to read phases directory: {}", e))?;
+
+    for entry in entries.flatten() {
+        let phase_path = entry.path();
+        if !phase_path.is_dir() {
+            continue;
+        }
+
+        let phase_dir = entry.file_name().to_string_lossy().to_string();
+
+        // Find *-PLAN.md files in this phase directory
+        if let Ok(phase_entries) = fs::read_dir(&phase_path) {
+            for phase_entry in phase_entries.flatten() {
+                let filename = phase_entry.file_name().to_string_lossy().to_string();
+                if filename.ends_with("-PLAN.md") {
+                    let plan_path = phase_entry.path();
+
+                    // Check for corresponding SUMMARY.md
+                    let summary_filename = filename.replace("-PLAN.md", "-SUMMARY.md");
+                    let summary_path = phase_path.join(&summary_filename);
+                    let has_summary = summary_path.exists();
+
+                    // Read plan content
+                    if let Ok(content) = fs::read_to_string(&plan_path) {
+                        plan_files.push(PlanFileData {
+                            content,
+                            has_summary,
+                            phase_dir: phase_dir.clone(),
+                            filename,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(plan_files)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

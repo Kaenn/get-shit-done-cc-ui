@@ -1,14 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
-import opcodeLogo from "../../src-tauri/icons/icon.png";
 import type { CSSProperties } from "react";
 
 /**
  * StartupIntro - a lightweight startup overlay shown on app launch.
  * - Non-interactive; auto-fades after parent hides it via the `visible` prop.
- * - Uses existing shimmer/rotating-symbol styles from shimmer.css.
+ * - Displays "GSD-UI" text branding with loading indicator.
  */
 export function StartupIntro({ visible }: { visible: boolean }) {
-  // Simple entrance animations only
   return (
     <AnimatePresence>
       {visible && (
@@ -20,7 +18,7 @@ export function StartupIntro({ visible }: { visible: boolean }) {
           className="fixed inset-0 z-[60] flex items-center justify-center bg-background"
           aria-hidden="true"
         >
-          {/* Ambient radial glow */}
+          {/* Ambient radial glow - cyan hue */}
           <motion.div
             className="absolute inset-0"
             initial={{ opacity: 0 }}
@@ -28,7 +26,7 @@ export function StartupIntro({ visible }: { visible: boolean }) {
             transition={{ duration: 0.25 }}
             style={{
               background:
-                "radial-gradient(800px circle at 50% 55%, var(--color-primary)/8, transparent 65%)",
+                "radial-gradient(800px circle at 50% 55%, var(--color-cyan)/12, transparent 65%)",
               pointerEvents: "none",
             } as CSSProperties}
           />
@@ -47,44 +45,37 @@ export function StartupIntro({ visible }: { visible: boolean }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ type: "spring", stiffness: 280, damping: 22 }}
-            className="relative flex flex-col items-center justify-center gap-1"
+            className="relative flex flex-col items-center justify-center gap-6"
           >
+            {/* GSD-UI Text Logo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
+              className="font-mono text-6xl font-extrabold tracking-tight"
+              style={{ color: 'var(--color-cyan-bright)' }}
+            >
+              GSD-UI
+            </motion.div>
 
-            {/* opcode logo slides left; brand text reveals to the right */}
-            <div className="relative flex items-center justify-center">
-              {/* Logo wrapper that gently slides left */}
-              <motion.div
-                className="relative z-10"
-                initial={{ opacity: 0, scale: 1, x: 0 }}
-                animate={{ opacity: 1, scale: 1, x: -14 }}
-                transition={{ duration: 0.35, ease: "easeOut", delay: 0.2 }}
-              >
+            {/* Loading dots */}
+            <div className="flex gap-2">
+              {[0, 1, 2].map((i) => (
                 <motion.div
-                  className="absolute inset-0 rounded-full bg-primary/15 blur-2xl"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 1, 0.9] }}
-                  transition={{ duration: 0.9, ease: "easeOut" }}
+                  key={i}
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: 'var(--color-cyan-bright)' }}
+                  initial={{ opacity: 0.3 }}
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{
+                    duration: 1.2,
+                    repeat: Infinity,
+                    delay: i * 0.2,
+                    ease: "easeInOut",
+                  }}
                 />
-                <motion.img
-                  src={opcodeLogo}
-                  alt="opcode"
-                  className="h-20 w-20 rounded-lg shadow-sm"
-                  transition={{ repeat: Infinity, repeatType: "loop", ease: "linear", duration: 0.5 }}
-                />
-              </motion.div>
-
-              {/* Brand text reveals left-to-right in the freed space */}
-              <motion.div
-                initial={{ x: -35, opacity: 0, clipPath: "inset(0 100% 0 0)" }}
-                animate={{ x: 2, opacity: 1, clipPath: "inset(0 0% 0 0)" }}
-                transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-                style={{ willChange: "transform, opacity, clip-path" }}
-              >
-                <BrandText />
-              </motion.div>
+              ))}
             </div>
-
-
           </motion.div>
         </motion.div>
       )}
@@ -93,12 +84,3 @@ export function StartupIntro({ visible }: { visible: boolean }) {
 }
 
 export default StartupIntro;
-
-function BrandText() {
-  return (
-    <div className="text-5xl font-extrabold tracking-tight brand-text">
-      <span className="brand-text-solid">opcode</span>
-      <span aria-hidden="true" className="brand-text-shimmer">opcode</span>
-    </div>
-  );
-}

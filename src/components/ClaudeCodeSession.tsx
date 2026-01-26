@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
+import {
   Copy,
   ChevronDown,
   GitBranch,
@@ -15,21 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Popover } from "@/components/ui/popover";
 import { api, type Session } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { listen as tauriListen } from "@tauri-apps/api/event";
+import { getEnvironmentInfo } from "@/lib/apiAdapter";
 
-// Conditional imports for Tauri APIs
-let tauriListen: any;
 type UnlistenFn = () => void;
 
-try {
-  if (typeof window !== 'undefined' && window.__TAURI__) {
-    tauriListen = require("@tauri-apps/api/event").listen;
-  }
-} catch (e) {
-  console.log('[ClaudeCodeSession] Tauri APIs not available, using web mode');
-}
-
-// Web-compatible replacements
-const listen = tauriListen || ((eventName: string, callback: (event: any) => void) => {
+// Web-compatible replacement for non-Tauri environments
+const webListen = (eventName: string, callback: (event: any) => void) => {
   console.log('[ClaudeCodeSession] Setting up DOM event listener for:', eventName);
 
   // In web mode, listen for DOM events
@@ -46,8 +38,13 @@ const listen = tauriListen || ((eventName: string, callback: (event: any) => voi
     console.log('[ClaudeCodeSession] Removing DOM event listener for:', eventName);
     window.removeEventListener(eventName, domEventHandler);
   });
-});
+};
+
+// Use Tauri listen in Tauri mode, web listen otherwise
+const listen = getEnvironmentInfo().isTauri ? tauriListen : webListen;
 import { StreamMessage } from "./StreamMessage";
+import { ConversationMessage } from "./conversation";
+import { useCollapseState } from "@/hooks/useCollapseState";
 import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { TimelineNavigator } from "./TimelineNavigator";
@@ -61,6 +58,8 @@ import type { ClaudeStreamMessage } from "./AgentExecution";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useTrackEvent, useComponentMetrics, useWorkflowTracking } from "@/hooks";
 import { SessionPersistenceService } from "@/services/sessionPersistence";
+import { GSDNextUpButton } from "@/components/gsd/GSDNextUpButton";
+import { useGSDStore } from "@/stores/gsdStore";
 
 interface ClaudeCodeSessionProps {
   /**
@@ -71,6 +70,18 @@ interface ClaudeCodeSessionProps {
    * Initial project path (for new sessions)
    */
   initialProjectPath?: string;
+  /**
+   * Initial command to auto-execute when session starts
+   */
+  initialCommand?: string;
+  /**
+   * Whether this tab is currently active (visible)
+   */
+  isActive?: boolean;
+  /**
+   * Callback when initial command has been consumed (should clear it from tab)
+   */
+  onInitialCommandConsumed?: () => void;
   /**
    * Callback to go back
    */
@@ -102,6 +113,9 @@ interface ClaudeCodeSessionProps {
 export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   session,
   initialProjectPath = "",
+  initialCommand,
+  isActive = true,
+  onInitialCommandConsumed,
   className,
   onStreamingChange,
   onProjectPathChange,
@@ -146,6 +160,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const isListeningRef = useRef(false);
   const sessionStartTime = useRef<number>(Date.now());
   const isIMEComposingRef = useRef(false);
+  const initialCommandExecutedRef = useRef(false);
   
   // Session metrics state for enhanced analytics
   const sessionMetrics = useRef({
@@ -170,14 +185,29 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   useComponentMetrics('ClaudeCodeSession');
   // const aiTracking = useAIInteractionTracking('sonnet'); // Default model
   const workflowTracking = useWorkflowTracking('claude_session');
-  
+
+  // GSD store for Next Up button
+  const { projectPath: gsdProjectPath } = useGSDStore();
+
   // Call onProjectPathChange when component mounts with initial path
   useEffect(() => {
     if (onProjectPathChange && projectPath) {
       onProjectPathChange(projectPath);
     }
   }, []); // Only run on mount
-  
+
+  // State to trigger initial command execution after component is ready
+  const [pendingInitialCommand, setPendingInitialCommand] = useState<string | null>(
+    initialCommand || null
+  );
+
+  // Mark initial command as pending on mount
+  useEffect(() => {
+    if (initialCommand && !initialCommandExecutedRef.current) {
+      setPendingInitialCommand(initialCommand);
+    }
+  }, [initialCommand]);
+
   // Keep ref in sync with state
   useEffect(() => {
     queuedPromptsRef.current = queuedPrompts;
@@ -202,6 +232,11 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     return messages.filter((message, index) => {
       // Skip meta messages that don't have meaningful content
       if (message.isMeta && !message.leafUuid && !message.summary) {
+        return false;
+      }
+
+      // Skip result messages (Execution Complete/Failed)
+      if (message.type === "result") {
         return false;
       }
 
@@ -260,12 +295,31 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     });
   }, [messages]);
 
+  // Collapse state for conversation view
+  const { isExpanded, toggleMessage } = useCollapseState(displayableMessages.length);
+
   const rowVirtualizer = useVirtualizer({
     count: displayableMessages.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 150, // Estimate, will be dynamically measured
     overscan: 5,
   });
+
+  // Force virtualizer to remeasure when tab becomes active
+  // This fixes the issue where hidden tabs have 0 dimensions and the virtualizer clears its cache
+  useEffect(() => {
+    if (isActive && displayableMessages.length > 0) {
+      // Small delay to ensure the container has been laid out
+      const timer = setTimeout(() => {
+        rowVirtualizer.measure();
+        // Also scroll to ensure content is visible
+        if (parentRef.current) {
+          parentRef.current.dispatchEvent(new Event('scroll'));
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, displayableMessages.length, rowVirtualizer]);
 
   // Debug logging
   useEffect(() => {
@@ -890,6 +944,30 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     }
   };
 
+  // Execute pending initial command after component is ready
+  useEffect(() => {
+    if (
+      pendingInitialCommand &&
+      projectPath &&
+      !initialCommandExecutedRef.current &&
+      !isLoading
+    ) {
+      initialCommandExecutedRef.current = true;
+
+      // Small delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        console.log('[ClaudeCodeSession] Executing initial command:', pendingInitialCommand);
+        handleSendPrompt(pendingInitialCommand, 'sonnet');
+        setPendingInitialCommand(null);
+
+        // Notify parent to clear the initial command
+        onInitialCommandConsumed?.();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [pendingInitialCommand, projectPath, isLoading]);
+
   const handleCopyAsJsonl = async () => {
     const jsonl = rawJsonlOutput.join('\n');
     await navigator.clipboard.writeText(jsonl);
@@ -1245,16 +1323,28 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.3 }}
-                className="absolute inset-x-4 pb-4"
+                className={cn(
+                  "absolute inset-x-4 py-1",
+                  virtualItem.index === 0 && "pt-4"
+                )}
                 style={{
                   top: virtualItem.start,
                 }}
               >
-                <StreamMessage 
-                  message={message} 
+                <ConversationMessage
+                  message={message}
+                  isExpanded={isExpanded(virtualItem.index)}
+                  onToggle={() => toggleMessage(virtualItem.index)}
+                  isLatest={virtualItem.index === displayableMessages.length - 1}
                   streamMessages={messages}
-                  onLinkDetected={handleLinkDetected}
-                />
+                >
+                  <StreamMessage
+                    message={message}
+                    streamMessages={messages}
+                    onLinkDetected={handleLinkDetected}
+                    disableCard={true}
+                  />
+                </ConversationMessage>
               </motion.div>
             );
           })}
@@ -1516,10 +1606,21 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
             </motion.div>
           )}
 
+          {/* Container for prompt input and Next Up button */}
           <div className={cn(
             "fixed bottom-0 left-0 right-0 transition-all duration-300 z-50",
             showTimeline && "sm:right-96"
           )}>
+            {/* GSD Next Up Button - positioned above prompt input */}
+            <AnimatePresence>
+              {gsdProjectPath && (
+                <GSDNextUpButton
+                  projectPath={gsdProjectPath}
+                  className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-10"
+                />
+              )}
+            </AnimatePresence>
+
             <FloatingPromptInput
               ref={floatingPromptRef}
               onSend={handleSendPrompt}

@@ -38,20 +38,43 @@ import {
   LSResultWidget,
   ThinkingWidget,
   WebSearchWidget,
-  WebFetchWidget
+  WebFetchWidget,
+  AskUserQuestionWidget
 } from "./ToolWidgets";
+import { parseGSDCommands } from "./gsd/GSDCommandLink";
 
 interface StreamMessageProps {
   message: ClaudeStreamMessage;
   className?: string;
   streamMessages: ClaudeStreamMessage[];
   onLinkDetected?: (url: string) => void;
+  /** When true, render content without Card wrapper (for use inside ConversationMessage) */
+  disableCard?: boolean;
 }
+
+/**
+ * Helper component to conditionally wrap content in a Card.
+ * When wrap=false, renders children directly without Card styling.
+ */
+const MaybeCard: React.FC<{
+  wrap: boolean;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ wrap, className, children }) => {
+  if (wrap) {
+    return (
+      <Card className={className}>
+        <CardContent className="p-4">{children}</CardContent>
+      </Card>
+    );
+  }
+  return <>{children}</>;
+};
 
 /**
  * Component to render a single Claude Code stream message
  */
-const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, className, streamMessages, onLinkDetected }) => {
+const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, className, streamMessages, onLinkDetected, disableCard = false }) => {
   // State to track tool results mapped by tool call ID
   const [toolResults, setToolResults] = useState<Map<string, any>>(new Map());
   
@@ -113,12 +136,11 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
       let renderedSomething = false;
       
       const renderedCard = (
-        <Card className={cn("border-primary/20 bg-primary/5", className)}>
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <Bot className="h-5 w-5 text-primary mt-0.5" />
-              <div className="flex-1 space-y-2 min-w-0">
-                {msg.content && Array.isArray(msg.content) && msg.content.map((content: any, idx: number) => {
+        <MaybeCard wrap={!disableCard} className={cn("border-primary/20 bg-primary/5", className)}>
+          <div className="flex items-start gap-3">
+            <Bot className="h-5 w-5 text-primary mt-0.5" />
+            <div className="flex-1 space-y-2 min-w-0">
+              {msg.content && Array.isArray(msg.content) && msg.content.map((content: any, idx: number) => {
                   // Text content - render as markdown
                   if (content.type === "text") {
                     // Ensure we have a string to render
@@ -134,20 +156,148 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
                           components={{
                             code({ node, inline, className, children, ...props }: any) {
                               const match = /language-(\w+)/.exec(className || '');
-                              return !inline && match ? (
-                                <SyntaxHighlighter
-                                  style={syntaxTheme}
-                                  language={match[1]}
-                                  PreTag="div"
-                                  {...props}
-                                >
-                                  {String(children).replace(/\n$/, '')}
-                                </SyntaxHighlighter>
-                              ) : (
+                              // Handle code blocks with syntax highlighting
+                              if (!inline && match) {
+                                return (
+                                  <SyntaxHighlighter
+                                    style={syntaxTheme}
+                                    language={match[1]}
+                                    PreTag="div"
+                                    {...props}
+                                  >
+                                    {String(children).replace(/\n$/, '')}
+                                  </SyntaxHighlighter>
+                                );
+                              }
+                              // Handle inline code - check for GSD commands
+                              const codeText = String(children);
+                              const isGSDCommand = /\/gsd:[\w-]+/.test(codeText);
+                              console.log('[GSD Debug] code element:', {
+                                inline,
+                                codeText,
+                                isGSDCommand,
+                                className,
+                                childrenType: typeof children,
+                                childrenValue: children
+                              });
+                              if (isGSDCommand) {
+                                const parsed = parseGSDCommands(codeText);
+                                console.log('[GSD Debug] parsed result:', parsed);
+                                return <>{parsed}</>;
+                              }
+                              return (
                                 <code className={className} {...props}>
                                   {children}
                                 </code>
                               );
+                            },
+                            // Helper to process children for GSD commands
+                            // Custom paragraph renderer to detect GSD commands
+                            p({ children, ...props }: any) {
+                              console.log('[GSD Debug] p element children:', {
+                                childrenType: typeof children,
+                                isArray: Array.isArray(children),
+                                children: children
+                              });
+                              const processedChildren = React.Children.map(children, (child, idx) => {
+                                console.log('[GSD Debug] p child:', {
+                                  idx,
+                                  type: typeof child,
+                                  isReactElement: React.isValidElement(child),
+                                  value: typeof child === 'string' ? child : (React.isValidElement(child) ? (child as any).type?.name || (child as any).type : child)
+                                });
+                                if (typeof child === 'string') {
+                                  // Reset regex and test
+                                  const testRegex = /\/gsd:[\w-]+/;
+                                  const hasGSD = testRegex.test(child);
+                                  console.log('[GSD Debug] p string child test:', { child, hasGSD });
+                                  if (hasGSD) {
+                                    return <>{parseGSDCommands(child)}</>;
+                                  }
+                                }
+                                return child;
+                              });
+                              return <p {...props}>{processedChildren}</p>;
+                            },
+                            // Custom list item renderer
+                            li({ children, ...props }: any) {
+                              const processedChildren = React.Children.map(children, (child) => {
+                                if (typeof child === 'string') {
+                                  const testRegex = /\/gsd:[\w-]+/;
+                                  if (testRegex.test(child)) {
+                                    return <>{parseGSDCommands(child)}</>;
+                                  }
+                                }
+                                return child;
+                              });
+                              return <li {...props}>{processedChildren}</li>;
+                            },
+                            // Handle strong/bold text
+                            strong({ children, ...props }: any) {
+                              const processedChildren = React.Children.map(children, (child) => {
+                                if (typeof child === 'string') {
+                                  const testRegex = /\/gsd:[\w-]+/;
+                                  if (testRegex.test(child)) {
+                                    return <>{parseGSDCommands(child)}</>;
+                                  }
+                                }
+                                return child;
+                              });
+                              return <strong {...props}>{processedChildren}</strong>;
+                            },
+                            // Handle em/italic text
+                            em({ children, ...props }: any) {
+                              const processedChildren = React.Children.map(children, (child) => {
+                                if (typeof child === 'string') {
+                                  const testRegex = /\/gsd:[\w-]+/;
+                                  if (testRegex.test(child)) {
+                                    return <>{parseGSDCommands(child)}</>;
+                                  }
+                                }
+                                return child;
+                              });
+                              return <em {...props}>{processedChildren}</em>;
+                            },
+                            // Handle blockquotes
+                            blockquote({ children, ...props }: any) {
+                              return <blockquote {...props}>{children}</blockquote>;
+                            },
+                            // Handle headings
+                            h1({ children, ...props }: any) {
+                              const processedChildren = React.Children.map(children, (child) => {
+                                if (typeof child === 'string') {
+                                  const testRegex = /\/gsd:[\w-]+/;
+                                  if (testRegex.test(child)) {
+                                    return <>{parseGSDCommands(child)}</>;
+                                  }
+                                }
+                                return child;
+                              });
+                              return <h1 {...props}>{processedChildren}</h1>;
+                            },
+                            h2({ children, ...props }: any) {
+                              const processedChildren = React.Children.map(children, (child) => {
+                                if (typeof child === 'string') {
+                                  const testRegex = /\/gsd:[\w-]+/;
+                                  if (testRegex.test(child)) {
+                                    return <>{parseGSDCommands(child)}</>;
+                                  }
+                                }
+                                return child;
+                              });
+                              return <h2 {...props}>{processedChildren}</h2>;
+                            },
+                            h3({ children, ...props }: any) {
+                              const processedChildren = React.Children.map(children, (child) => {
+                                if (typeof child === 'string') {
+                                  const testRegex = /\/gsd:[\w-]+/;
+                                  if (testRegex.test(child)) {
+                                    return <>{parseGSDCommands(child)}</>;
+                                  }
+                                }
+                                return child;
+                              });
+                              return <h3 {...props}>{processedChildren}</h3>;
                             }
                           }}
                         >
@@ -264,7 +414,13 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
                         renderedSomething = true;
                         return <WebFetchWidget url={input.url} prompt={input.prompt} result={toolResult} />;
                       }
-                      
+
+                      // AskUserQuestion tool
+                      if (toolName === "askuserquestion") {
+                        renderedSomething = true;
+                        return <AskUserQuestionWidget question={input?.question} result={toolResult} />;
+                      }
+
                       // Default - return null
                       return null;
                     };
@@ -300,17 +456,16 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
                   return null;
                 })}
                 
-                {msg.usage && (
-                  <div className="text-xs text-muted-foreground mt-2">
-                    Tokens: {msg.usage.input_tokens} in, {msg.usage.output_tokens} out
-                  </div>
-                )}
-              </div>
+              {msg.usage && (
+                <div className="text-xs text-muted-foreground mt-2">
+                  Tokens: {msg.usage.input_tokens} in, {msg.usage.output_tokens} out
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </MaybeCard>
       );
-      
+
       if (!renderedSomething) return null;
       return renderedCard;
     }
@@ -326,12 +481,11 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
       let renderedSomething = false;
       
       const renderedCard = (
-        <Card className={cn("border-muted-foreground/20 bg-muted/20", className)}>
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div className="flex-1 space-y-2 min-w-0">
-                {/* Handle content that is a simple string (e.g. from user commands) */}
+        <MaybeCard wrap={!disableCard} className={cn("border-muted-foreground/20 bg-muted/20", className)}>
+          <div className="flex items-start gap-3">
+            <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div className="flex-1 space-y-2 min-w-0">
+              {/* Handle content that is a simple string (e.g. from user commands) */}
                 {(typeof msg.content === 'string' || (msg.content && !Array.isArray(msg.content))) && (
                   (() => {
                     const contentStr = typeof msg.content === 'string' ? msg.content : String(msg.content);
@@ -626,10 +780,9 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({ message, classNa
                   
                   return null;
                 })}
-              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </MaybeCard>
       );
       if (!renderedSomething) return null;
       return renderedCard;
