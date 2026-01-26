@@ -182,7 +182,7 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
       return { expandedNodes: newExpanded };
     }),
 
-  initializeExpanded: (currentPhaseNumber: number, currentPlanNumber?: number, milestoneData?: MilestoneInfo[]) =>
+  initializeExpanded: (currentPhaseNumber: number, _currentPlanNumber?: number, milestoneData?: MilestoneInfo[]) =>
     set(() => {
       const expandedSet = new Set<string>();
 

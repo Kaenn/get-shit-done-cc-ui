@@ -102,9 +102,9 @@ export function buildTreeData(
       type: 'phase' as const,
       label: `Phase ${phase.number}: ${phase.name}`,
       status,
-      filepath: projectPath
-        ? `${projectPath}/.planning/phases/${phaseDirName}/`
-        : undefined,
+      // Phases are directories, not files - don't set filepath
+      // Users can click into plans to view individual plan files
+      filepath: undefined,
       progress,
       metadata: {
         goal: phase.goal,
@@ -172,10 +172,10 @@ export function buildMilestoneTree(
     const progress = calculateMilestoneProgress(milestonePhases, plans);
 
     // Determine milestone filepath
-    // Archived milestones point to their archived ROADMAP file
     // Active milestones point to the main ROADMAP.md
+    // Archived milestones don't have a filepath (archived roadmaps may not exist)
     const filepath = milestone.archived
-      ? `${projectPath}/.planning/milestones/v${Math.floor(milestone.number / 10)}.${milestone.number % 10}-ROADMAP.md`
+      ? undefined
       : `${projectPath}/.planning/ROADMAP.md`;
 
     const milestoneNode: TreeNode = {
