@@ -22,7 +22,7 @@ export function GSDIconSidebar() {
 
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="w-12 h-full flex flex-col bg-background">
+      <div className="w-12 h-full flex flex-col bg-background border-r border-border">
         <ToggleGroup.Root
           type="single"
           orientation="vertical"
@@ -49,7 +49,7 @@ export function GSDIconSidebar() {
                     "hover:bg-muted/50"
                   )}
                 >
-                  <Icon className="w-6 h-6" />
+                  <Icon className="w-5 h-5" />
                 </ToggleGroup.Item>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
