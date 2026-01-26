@@ -1,9 +1,11 @@
 /**
  * Command dialog for parameter editing and execution
- * Modal dialog that shows command parameters and advanced flags
+ * Modal dialog that shows command parameters with React Hook Form + Zod validation
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useGSDStore } from '@/stores/gsdStore';
 import { api } from '@/lib/api';
+import { getSchemaForCommand } from '@/lib/gsd/command-schemas';
 
 export function GSDCommandDialog() {
   const {
@@ -24,41 +27,59 @@ export function GSDCommandDialog() {
     selectedCommand,
     commandInitialValues,
     closeCommandDialog,
-    parsedData,
     projectPath,
   } = useGSDStore();
 
-  const [formValues, setFormValues] = useState<Record<string, string | number>>({});
-  const [advancedFlags, setAdvancedFlags] = useState('');
+  // Get schema dynamically based on selected command
+  const schema = useMemo(() => {
+    return selectedCommand ? getSchemaForCommand(selectedCommand.id) : getSchemaForCommand('');
+  }, [selectedCommand]);
 
-  // Initialize form values when dialog opens or command changes
+  // Initialize React Hook Form with Zod resolver
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(schema),
+    mode: 'onBlur', // Validate on blur for better UX
+  });
+
+  // Reset form values when dialog opens or command changes
   useEffect(() => {
-    if (selectedCommand && parsedData) {
-      const initialValues: Record<string, string | number> = {};
+    if (commandDialogOpen && selectedCommand) {
+      const defaultValues: Record<string, string | number | boolean> = {};
+
+      // Set default values for parameters
       selectedCommand.parameters.forEach((param) => {
-        // Use commandInitialValues if provided, otherwise fall back to defaults
         if (commandInitialValues && commandInitialValues[param.name] !== undefined) {
-          initialValues[param.name] = commandInitialValues[param.name];
+          defaultValues[param.name] = commandInitialValues[param.name];
         } else if (param.defaultValue !== undefined) {
-          initialValues[param.name] = param.defaultValue;
+          defaultValues[param.name] = param.defaultValue;
         } else {
-          initialValues[param.name] = param.type === 'number' ? 0 : '';
+          defaultValues[param.name] = param.type === 'number' ? '' : '';
         }
       });
-      setFormValues(initialValues);
-      setAdvancedFlags('');
-    }
-  }, [selectedCommand, parsedData, commandInitialValues]);
 
-  const handleExecute = async () => {
+      // Set default values for flags (all false by default)
+      selectedCommand.flags.forEach((flag) => {
+        defaultValues[flag.name] = false;
+      });
+
+      reset(defaultValues);
+    }
+  }, [commandDialogOpen, selectedCommand, commandInitialValues, reset]);
+
+  const onFormSubmit = async (data: Record<string, unknown>) => {
     if (!selectedCommand || !projectPath) return;
 
     try {
       // Build parameter values string
       const paramValues = selectedCommand.parameters
         .map((param) => {
-          const value = formValues[param.name];
-          if (value !== undefined && value !== '') {
+          const value = data[param.name];
+          if (value !== undefined && value !== '' && value !== null) {
             return `${value}`;
           }
           return '';
@@ -66,8 +87,15 @@ export function GSDCommandDialog() {
         .filter(Boolean)
         .join(' ');
 
+      // Build flags string (flags will be handled in Plan 03)
+      // For now, just include active flags from form data
+      const flagValues = selectedCommand.flags
+        .filter((flag) => data[flag.name] === true)
+        .map((flag) => flag.flag)
+        .join(' ');
+
       // Build final command
-      const finalCommand = `${selectedCommand.fullCommand} ${paramValues} ${advancedFlags}`.trim();
+      const finalCommand = `${selectedCommand.fullCommand} ${paramValues} ${flagValues}`.trim();
 
       // Execute command with /clear prefix
       await api.executeClaudeCode(projectPath, `/clear\n${finalCommand}`, 'sonnet');
@@ -80,13 +108,6 @@ export function GSDCommandDialog() {
     }
   };
 
-  const handleInputChange = (paramName: string, value: string) => {
-    setFormValues((prev) => ({
-      ...prev,
-      [paramName]: value,
-    }));
-  };
-
   if (!selectedCommand) return null;
 
   return (
@@ -97,65 +118,80 @@ export function GSDCommandDialog() {
           <DialogDescription>{selectedCommand.description}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Parameter fields */}
-          {selectedCommand.parameters.length > 0 && (
-            <div className="space-y-3">
-              {selectedCommand.parameters.map((param) => (
-                <div key={param.name} className="space-y-1.5">
-                  <Label htmlFor={param.name}>
-                    {param.label}
-                    {!param.required && (
-                      <span className="text-muted-foreground ml-1">(optional)</span>
-                    )}
-                  </Label>
-                  <Input
-                    id={param.name}
-                    type={param.type === 'number' ? 'number' : 'text'}
-                    value={formValues[param.name] ?? ''}
-                    onChange={(e) => handleInputChange(param.name, e.target.value)}
-                    placeholder={param.defaultValue?.toString() || ''}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+        <form onSubmit={handleSubmit(onFormSubmit)}>
+          <div className="space-y-4 py-4">
+            {/* Parameter fields */}
+            {selectedCommand.parameters.length > 0 && (
+              <div className="space-y-3">
+                {selectedCommand.parameters.map((param) => {
+                  const fieldError = errors[param.name];
+                  const errorMessage = fieldError?.message as string | undefined;
 
-          {/* Advanced flags */}
-          <div className="space-y-1.5">
-            <Label htmlFor="advanced-flags">Advanced Flags (optional)</Label>
-            <Input
-              id="advanced-flags"
-              type="text"
-              value={advancedFlags}
-              onChange={(e) => setAdvancedFlags(e.target.value)}
-              placeholder="--flag value --other-flag"
-            />
+                  return (
+                    <div key={param.name} className="space-y-1.5">
+                      <Label htmlFor={param.name}>
+                        {param.label}
+                        {param.required ? (
+                          <span className="text-red-500 ml-0.5">*</span>
+                        ) : (
+                          <span className="text-muted-foreground ml-1">(optional)</span>
+                        )}
+                      </Label>
+                      <Input
+                        id={param.name}
+                        type={param.type === 'number' ? 'number' : 'text'}
+                        placeholder={param.defaultValue?.toString() || ''}
+                        className={cn(
+                          fieldError && 'border-red-500 focus-visible:ring-red-500'
+                        )}
+                        {...register(param.name, {
+                          valueAsNumber: param.type === 'number',
+                        })}
+                      />
+                      {errorMessage && (
+                        <p className="text-xs text-red-500 mt-1">{errorMessage}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* No parameters message */}
+            {selectedCommand.parameters.length === 0 &&
+              selectedCommand.flags.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  This command has no configurable parameters.
+                </p>
+              )}
           </div>
-        </div>
 
-        <DialogFooter>
-          <button
-            onClick={closeCommandDialog}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium",
-              "border border-border",
-              "hover:bg-muted transition-colors"
-            )}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleExecute}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium",
-              "bg-primary text-primary-foreground",
-              "hover:bg-primary/90 transition-colors"
-            )}
-          >
-            Execute
-          </button>
-        </DialogFooter>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={closeCommandDialog}
+              className={cn(
+                'px-4 py-2 rounded-md text-sm font-medium',
+                'border border-border',
+                'hover:bg-muted transition-colors'
+              )}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={cn(
+                'px-4 py-2 rounded-md text-sm font-medium',
+                'bg-primary text-primary-foreground',
+                'hover:bg-primary/90 transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+            >
+              {isSubmitting ? 'Executing...' : 'Execute'}
+            </button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
