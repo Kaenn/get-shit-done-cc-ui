@@ -7,6 +7,7 @@ import { X, FolderOpen, FileText } from 'lucide-react';
 import { useGSDStore } from '@/stores/gsdStore';
 import { cn } from '@/lib/utils';
 import { GSDViewerTabs } from './GSDViewerTabs';
+import { GSDFileContent } from './GSDFileContent';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 export function GSDFileViewer() {
@@ -51,7 +52,7 @@ export function GSDFileViewer() {
           {openTabs.length === 0 ? (
             <EmptyState />
           ) : activeTab ? (
-            <FileContent tab={activeTab} />
+            <GSDFileContent tab={activeTab} />
           ) : (
             <EmptyState />
           )}
@@ -69,30 +70,6 @@ function EmptyState() {
       <p className="text-xs text-muted-foreground/70">
         Click a file in the State tree to view it
       </p>
-    </div>
-  );
-}
-
-interface FileContentProps {
-  tab: import('@/stores/gsdStore').FileTab;
-}
-
-function FileContent({ tab }: FileContentProps) {
-  // Placeholder for now - will be replaced with markdown rendering in 08-03
-  return (
-    <div className="p-4">
-      <div className="text-sm text-muted-foreground mb-2">
-        {tab.filepath}
-      </div>
-      {tab.content ? (
-        <pre className="text-xs font-mono whitespace-pre-wrap">
-          {tab.content}
-        </pre>
-      ) : (
-        <div className="text-sm text-muted-foreground italic">
-          Loading content...
-        </div>
-      )}
     </div>
   );
 }
