@@ -1,10 +1,10 @@
 /**
  * File content loader and renderer
- * Loads file content via Tauri fs API, parses frontmatter, renders markdown
+ * Loads file content via Tauri backend command, parses frontmatter, renders markdown
  */
 
 import { useEffect, useState } from 'react';
-import { readTextFile } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useGSDStore, type FileTab } from '@/stores/gsdStore';
 import { parseMarkdownFile, type ParsedMarkdown } from '@/lib/gsd/parseMarkdown';
@@ -43,7 +43,7 @@ export function GSDFileContent({ tab }: GSDFileContentProps) {
       setError(null);
 
       try {
-        const content = await readTextFile(tab.filepath);
+        const content = await invoke<string>('read_text_file', { filePath: tab.filepath });
 
         // Cache content in store
         updateTabContent(tab.id, content);

@@ -2319,6 +2319,26 @@ pub async fn read_gsd_plan_files(project_path: String) -> Result<Vec<PlanFileDat
     Ok(plan_files)
 }
 
+/// Reads a text file from an absolute path
+/// Used by the file viewer to load markdown files through Tauri backend
+#[tauri::command]
+pub async fn read_text_file(file_path: String) -> Result<String, String> {
+    log::info!("Reading text file: {}", file_path);
+
+    let path = PathBuf::from(&file_path);
+
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path));
+    }
+
+    if !path.is_file() {
+        return Err(format!("Path is not a file: {}", file_path));
+    }
+
+    fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read file: {}", e))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
