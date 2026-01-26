@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useGSDStore } from '@/stores/gsdStore';
 import { api } from '@/lib/api';
@@ -40,6 +41,7 @@ export function GSDCommandDialog() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(schema),
@@ -154,6 +156,42 @@ export function GSDCommandDialog() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Flag toggle switches */}
+            {selectedCommand.flags && selectedCommand.flags.length > 0 && (
+              <div className="space-y-3 pt-2 border-t border-border">
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Options
+                </Label>
+                {selectedCommand.flags.map((flag) => (
+                  <Controller
+                    key={flag.name}
+                    name={flag.name}
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <Label
+                            htmlFor={flag.name}
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            {flag.label}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            {flag.description}
+                          </p>
+                        </div>
+                        <Switch
+                          id={flag.name}
+                          checked={field.value ?? false}
+                          onCheckedChange={field.onChange}
+                        />
+                      </div>
+                    )}
+                  />
+                ))}
               </div>
             )}
 
