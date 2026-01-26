@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** Terminal-centric workflow enhancement — GSD panel augments Claude Code without disrupting terminal-first experience
-**Current focus:** v1.1 Context Enhancement — Phase 10: Command Forms
+**Current focus:** Phase 11: npx Installation
 
 ## Current Position
 
-Phase: 10 complete, Phase 11 ready
-Plan: Verified
-Status: Ready for Phase 11
-Last activity: 2026-01-26 — Completed Phase 10: Command Forms
+Phase: 11 of 11 (npx-installation)
+Plan: 02 of 05 complete
+Status: In progress
+Last activity: 2026-01-26 — Completed 11-02-PLAN.md
 
-Progress: [██████████████████████] 97% (32/33 plans)
+Progress: [███████████████████████] 100% (33/33 plans)
 
 ## Performance Metrics
 
@@ -83,6 +83,11 @@ Recent decisions affecting current work:
 - Toast state local to dialog component (not global store) (10-05)
 - 5 second toast duration for error messages (10-05)
 - Keep dialog open on error for retry (10-05)
+- Lazy download over postinstall: first run downloads and exits, second run executes (11-02)
+- WSL detection via /proc/version parsing for automatic Linux binary selection (11-02)
+- crypto.timingSafeEqual for checksum comparison to prevent timing attacks (11-02)
+- Binary cached in npm/bin/ directory inside node_modules (11-02)
+- GSD_UI_PLATFORM environment variable for manual platform override (11-02)
 
 ### Pending Todos
 
@@ -101,8 +106,8 @@ From research/SUMMARY.md:
 
 ## Session Continuity
 
-Last session: 2026-01-26
-Stopped at: Completed Phase 10: Command Forms
+Last session: 2026-01-26T19:12:17Z
+Stopped at: Completed 11-02-PLAN.md (npm package structure)
 Resume file: None
-Status: Phase 10 verified, Phase 11 ready
-Next step: /gsd:discuss-phase 11 or /gsd:plan-phase 11
+Status: Phase 11 in progress (2/5 plans complete)
+Next step: /gsd:execute-phase 11 03 (GitHub Actions workflow)
