@@ -18,6 +18,13 @@ echo "Bumping version to $VERSION..."
 # Update package.json
 sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" package.json && rm package.json.bak
 
+# Update npm/package.json
+if [ -f "npm/package.json" ]; then
+  sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" npm/package.json && rm npm/package.json.bak
+else
+  echo "Warning: npm/package.json not found, skipping"
+fi
+
 # Update Cargo.toml
 sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml && rm src-tauri/Cargo.toml.bak
 
@@ -27,7 +34,12 @@ sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.co
 # Update Info.plist
 sed -i.bak "s/<string>.*<\/string><!-- VERSION -->/<string>$VERSION<\/string><!-- VERSION -->/" src-tauri/Info.plist && rm src-tauri/Info.plist.bak
 
-echo "✅ Version bumped to $VERSION in all files"
+echo "✅ Version bumped to $VERSION in:"
+echo "   - package.json"
+echo "   - npm/package.json"
+echo "   - src-tauri/Cargo.toml"
+echo "   - src-tauri/tauri.conf.json"
+echo "   - src-tauri/Info.plist"
 echo ""
 echo "Next steps:"
 echo "1. Review the changes: git diff"
