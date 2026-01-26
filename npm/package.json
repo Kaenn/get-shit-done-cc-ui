@@ -1,0 +1,21 @@
+{
+  "name": "get-shit-done-cc-ui",
+  "version": "0.2.1",
+  "description": "GSD-UI - Visual panel for Claude Code terminal workflows",
+  "bin": {
+    "get-shit-done-cc-ui": "./bin/get-shit-done-cc-ui"
+  },
+  "dependencies": {
+    "ora": "^8.1.1",
+    "supports-color": "^9.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/glennin-codes/get-shit-done-cc-ui.git"
+  },
+  "keywords": ["claude", "ai", "cli", "gsd", "terminal", "ui"],
+  "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=16"
+  }
+}
