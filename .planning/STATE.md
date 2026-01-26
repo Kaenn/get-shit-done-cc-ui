@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-25)
 ## Current Position
 
 Phase: 10 of 10 (Command Forms)
-Plan: 01 of 6 complete
+Plan: 02 of 5 complete
 Status: In progress
-Last activity: 2026-01-26 — Completed 10-01-PLAN.md
+Last activity: 2026-01-26 — Completed 10-02-PLAN.md
 
-Progress: [█████████████████████] 85% (28/33 plans)
+Progress: [█████████████████████] 88% (29/33 plans)
 
 ## Performance Metrics
 
@@ -69,6 +69,10 @@ Recent decisions affecting current work:
 - CommandFlag interface with name/flag/label/description fields (10-01)
 - All 7 categories expanded by default per CONTEXT.md (10-01)
 - Category order: project-setup > phase-lifecycle > roadmap-ops > milestone-ops > quick-work > navigation > configuration (10-01)
+- Validate on blur (mode: 'onBlur') for better UX per RESEARCH.md (10-02)
+- Required fields marked with red asterisk, optional with (optional) text (10-02)
+- emptySchema for commands without parameters (10-02)
+- Removed advancedFlags text input - flags will be toggles in Plan 03 (10-02)
 
 ### Pending Todos
 
@@ -88,7 +92,7 @@ From research/SUMMARY.md:
 ## Session Continuity
 
 Last session: 2026-01-26
-Stopped at: Completed 10-01-PLAN.md
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
-Status: Ready for 10-02-PLAN.md
-Next step: /gsd:execute-phase 10 (continue with plan 02)
+Status: Ready for 10-03-PLAN.md
+Next step: /gsd:execute-phase 10 (continue with plan 03)
