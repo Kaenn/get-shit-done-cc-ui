@@ -22,6 +22,7 @@ export function GSDCommandDialog() {
   const {
     commandDialogOpen,
     selectedCommand,
+    commandInitialValues,
     closeCommandDialog,
     parsedData,
     projectPath,
@@ -35,7 +36,10 @@ export function GSDCommandDialog() {
     if (selectedCommand && parsedData) {
       const initialValues: Record<string, string | number> = {};
       selectedCommand.parameters.forEach((param) => {
-        if (param.defaultValue !== undefined) {
+        // Use commandInitialValues if provided, otherwise fall back to defaults
+        if (commandInitialValues && commandInitialValues[param.name] !== undefined) {
+          initialValues[param.name] = commandInitialValues[param.name];
+        } else if (param.defaultValue !== undefined) {
           initialValues[param.name] = param.defaultValue;
         } else {
           initialValues[param.name] = param.type === 'number' ? 0 : '';
@@ -44,7 +48,7 @@ export function GSDCommandDialog() {
       setFormValues(initialValues);
       setAdvancedFlags('');
     }
-  }, [selectedCommand, parsedData]);
+  }, [selectedCommand, parsedData, commandInitialValues]);
 
   const handleExecute = async () => {
     if (!selectedCommand || !projectPath) return;

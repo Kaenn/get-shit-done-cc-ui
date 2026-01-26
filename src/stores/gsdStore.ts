@@ -65,6 +65,7 @@ interface GSDState {
   expandedCategories: Set<string>;
   commandDialogOpen: boolean;
   selectedCommand: GSDCommandDefinition | null;
+  commandInitialValues: Record<string, string | number> | null;
   showInactiveCommands: boolean;
 
   // Actions
@@ -99,7 +100,7 @@ interface GSDState {
   // Command panel actions
   toggleCategory: (category: string) => void;
   initializeCategories: () => void;
-  openCommandDialog: (command: GSDCommandDefinition) => void;
+  openCommandDialog: (command: GSDCommandDefinition, initialValues?: Record<string, string | number>) => void;
   closeCommandDialog: () => void;
   toggleShowInactiveCommands: () => void;
 }
@@ -138,6 +139,7 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
   expandedCategories: new Set<string>(),
   commandDialogOpen: false,
   selectedCommand: null,
+  commandInitialValues: null,
   showInactiveCommands: true,
 
   // Actions
@@ -296,11 +298,11 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
       expandedCategories: new Set(['plan']),
     })),
 
-  openCommandDialog: (command: GSDCommandDefinition) =>
-    set({ commandDialogOpen: true, selectedCommand: command }),
+  openCommandDialog: (command: GSDCommandDefinition, initialValues?: Record<string, string | number>) =>
+    set({ commandDialogOpen: true, selectedCommand: command, commandInitialValues: initialValues || null }),
 
   closeCommandDialog: () =>
-    set({ commandDialogOpen: false, selectedCommand: null }),
+    set({ commandDialogOpen: false, selectedCommand: null, commandInitialValues: null }),
 
   toggleShowInactiveCommands: () =>
     set((state) => ({ showInactiveCommands: !state.showInactiveCommands })),

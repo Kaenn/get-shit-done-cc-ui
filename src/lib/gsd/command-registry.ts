@@ -14,6 +14,8 @@ import {
   Activity,
   Settings2,
   HelpCircle,
+  ClipboardCheck,
+  Archive,
 } from 'lucide-react';
 import type { StateData, PhaseInfo } from '@/stores/gsdStore';
 
@@ -146,6 +148,26 @@ export const GSD_COMMANDS: GSDCommandDefinition[] = [
     parameters: [],
     isActive: ({ parsedData }) => !!parsedData,
   },
+  {
+    id: 'audit-milestone',
+    fullCommand: '/gsd:audit-milestone',
+    label: 'Audit Milestone',
+    description: 'Audit milestone completion vs original intent',
+    category: 'execute',
+    icon: ClipboardCheck,
+    parameters: [],
+    isActive: ({ parsedData }) => !!parsedData,
+  },
+  {
+    id: 'complete-milestone',
+    fullCommand: '/gsd:complete-milestone',
+    label: 'Complete Milestone',
+    description: 'Archive milestone and create git tag',
+    category: 'execute',
+    icon: Archive,
+    parameters: [],
+    isActive: ({ parsedData }) => !!parsedData,
+  },
 
   // Settings category
   {
@@ -183,4 +205,11 @@ export function getCommandsByCategory(): {
     execute: GSD_COMMANDS.filter((cmd) => cmd.category === 'execute'),
     settings: GSD_COMMANDS.filter((cmd) => cmd.category === 'settings'),
   };
+}
+
+/**
+ * Get a command definition by its ID
+ */
+export function getCommandById(id: string): GSDCommandDefinition | undefined {
+  return GSD_COMMANDS.find((cmd) => cmd.id === id);
 }

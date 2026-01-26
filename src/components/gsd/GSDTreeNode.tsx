@@ -3,13 +3,12 @@
  * Renders milestones, phases, and plans with expand/collapse, status dots, and progress
  */
 
-import React from 'react';
-import { ChevronRight, Play } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGSDStore } from '@/stores/gsdStore';
-import { getCommandForNode, getCommandLabel } from '@/lib/gsd/commands';
-import { api } from '@/lib/api';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { getMilestoneActionLinks, getPhaseActionLinks } from '@/lib/gsd/commands';
+import { GSDActionLink } from './GSDActionLink';
 import type { TreeNode } from '@/lib/gsd/tree-transforms';
 
 interface TreeNodeProps {
@@ -22,7 +21,7 @@ interface TreeNodeProps {
 
 export const GSDTreeNode = React.memo(
   ({ node, depth, currentPhaseNumber, projectPath, isArchived }: TreeNodeProps) => {
-    const { expandedNodes, toggleNode, isCommandRunning, setCommandRunning, openFile } = useGSDStore();
+    const { expandedNodes, toggleNode, openFile } = useGSDStore();
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children && node.children.length > 0;
 
@@ -33,25 +32,20 @@ export const GSDTreeNode = React.memo(
     const isCurrentPhase =
       node.type === 'phase' && node.id === `phase-${currentPhaseNumber}`;
 
-    // Determine if this node has a clickable command
-    const command = getCommandForNode(node, currentPhaseNumber);
-    const isClickable = command !== null && !isCommandRunning;
-
-    // Command execution handler
-    const handleNodeClick = async (e: React.MouseEvent) => {
-      e.stopPropagation(); // Prevent expand/collapse
-      if (!command || isCommandRunning || !projectPath) return;
-
-      setCommandRunning(command);
-      try {
-        // Send /clear followed by the command
-        await api.executeClaudeCode(projectPath, `/clear\n${command}`, 'sonnet');
-      } catch (error) {
-        console.error('GSD command failed:', error);
-      } finally {
-        setCommandRunning(null);
+    // Get action links for this node (milestones and phases only)
+    const actionLinks = useMemo(() => {
+      if (isArchivedNode) return [];
+      if (node.type === 'milestone') {
+        return getMilestoneActionLinks(node);
       }
-    };
+      if (node.type === 'phase') {
+        return getPhaseActionLinks(node, currentPhaseNumber);
+      }
+      return [];
+    }, [node, currentPhaseNumber, isArchivedNode]);
+
+    // Determine if node should show chevron (has children or action links)
+    const hasExpandableContent = hasChildren || actionLinks.length > 0;
 
     // Status indicator - colored dot only (per CONTEXT.md: "Color-only status, no icons")
     const StatusDot = ({ status }: { status: 'pending' | 'in-progress' | 'complete' }) => {
@@ -71,7 +65,7 @@ export const GSDTreeNode = React.memo(
     return (
       <div
         role="treeitem"
-        aria-expanded={hasChildren ? isExpanded : undefined}
+        aria-expanded={hasExpandableContent ? isExpanded : undefined}
       >
         {/* Node row */}
         <div
@@ -89,14 +83,14 @@ export const GSDTreeNode = React.memo(
               e.preventDefault();
               openFile(node.filepath);
             }
-            if (e.key === ' ' && hasChildren) {
+            if (e.key === ' ' && hasExpandableContent) {
               e.preventDefault();
               toggleNode(node.id);
             }
           }}
         >
           {/* Chevron for expandable nodes - click to expand/collapse */}
-          {hasChildren ? (
+          {hasExpandableContent ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -136,31 +130,6 @@ export const GSDTreeNode = React.memo(
             {node.label}
           </span>
 
-          {/* Play button for clickable nodes */}
-          {isClickable && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleNodeClick}
-                    disabled={isCommandRunning}
-                    className={cn(
-                      "p-1 rounded hover:bg-muted",
-                      "opacity-0 group-hover:opacity-100 transition-opacity",
-                      isCommandRunning && "opacity-50 cursor-not-allowed"
-                    )}
-                    aria-label={`Execute ${getCommandLabel(command!)}`}
-                  >
-                    <Play className="w-4 h-4 text-primary" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" align="center">
-                  <code className="text-xs">{command}</code>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
           {/* Progress for milestones and phases (x/total format only) - hidden for archived */}
           {node.progress && !isArchivedNode && (
             <span className="text-xs text-muted-foreground">
@@ -169,13 +138,14 @@ export const GSDTreeNode = React.memo(
           )}
         </div>
 
-        {/* Recursive children with connector lines */}
-        {hasChildren && isExpanded && (
+        {/* Recursive children and action links with connector lines */}
+        {hasExpandableContent && isExpanded && (
           <div role="group" className="relative">
             {/* Vertical connector line */}
             <div className="absolute left-[11px] top-0 bottom-2 w-px bg-border" />
 
-            {node.children!.map((child) => (
+            {/* Render child nodes */}
+            {node.children?.map((child) => (
               <div key={child.id} className="relative">
                 {/* Horizontal connector line */}
                 <div className="absolute left-[11px] top-4 w-4 h-px bg-border" />
@@ -186,6 +156,15 @@ export const GSDTreeNode = React.memo(
                   projectPath={projectPath}
                   isArchived={isArchivedNode}
                 />
+              </div>
+            ))}
+
+            {/* Render action links at the bottom */}
+            {actionLinks.map((link) => (
+              <div key={link.id} className="relative">
+                {/* Horizontal connector line */}
+                <div className="absolute left-[11px] top-2.5 w-4 h-px bg-border" />
+                <GSDActionLink link={link} depth={depth + 1} />
               </div>
             ))}
           </div>
