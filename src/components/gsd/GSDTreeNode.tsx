@@ -116,7 +116,8 @@ export const GSDTreeNode = React.memo(
             <div className="w-4" /> // Spacer for alignment
           )}
 
-          <StatusDot status={node.status} />
+          {/* Status dot - hidden for archived nodes (always complete, no need to show) */}
+          {!isArchivedNode && <StatusDot status={node.status} />}
 
           {/* Node label - click to open file in viewer */}
           <span
@@ -160,8 +161,8 @@ export const GSDTreeNode = React.memo(
             </TooltipProvider>
           )}
 
-          {/* Progress for milestones and phases (x/total format only) */}
-          {node.progress && (
+          {/* Progress for milestones and phases (x/total format only) - hidden for archived */}
+          {node.progress && !isArchivedNode && (
             <span className="text-xs text-muted-foreground">
               {node.progress.completed}/{node.progress.total}
             </span>
