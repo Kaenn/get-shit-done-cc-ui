@@ -28,6 +28,7 @@ interface GSDState {
   panelWidth: number;
   isCommandPanelVisible: boolean;
   commandPanelWidth: number;
+  sidebarActiveView: 'commands' | 'state';
 
   // Runtime state (not persisted)
   parsedData: StateData | null;
@@ -56,6 +57,7 @@ interface GSDState {
   setPanelWidth: (width: number) => void;
   toggleCommandPanel: () => void;
   setCommandPanelWidth: (width: number) => void;
+  setSidebarActiveView: (view: 'commands' | 'state') => void;
   updateParsedData: (data: StateData | null) => void;
   setPhases: (phases: PhaseInfo[]) => void;
   setTreeData: (data: TreeNode[]) => void;
@@ -85,6 +87,7 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
   panelWidth: 75,
   isCommandPanelVisible: true,
   commandPanelWidth: 20,
+  sidebarActiveView: 'commands',
 
   // Initial runtime state
   parsedData: null,
@@ -112,6 +115,8 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
   togglePanel: () => set((state) => ({ isPanelVisible: !state.isPanelVisible })),
 
   setPanelWidth: (width: number) => set({ panelWidth: width }),
+
+  setSidebarActiveView: (view: 'commands' | 'state') => set({ sidebarActiveView: view }),
 
   toggleCommandPanel: () => set((state) => {
     const newVisible = !state.isCommandPanelVisible;
@@ -201,6 +206,7 @@ export const useGSDStore = create<GSDState>()(
       panelWidth: state.panelWidth,
       isCommandPanelVisible: state.isCommandPanelVisible,
       commandPanelWidth: state.commandPanelWidth,
+      sidebarActiveView: state.sidebarActiveView,
     }),
     onRehydrateStorage: () => (state) => {
       if (state) {
