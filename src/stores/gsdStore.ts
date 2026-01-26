@@ -156,11 +156,19 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
 
   toggleCommandPanel: () => set((state) => {
     const newVisible = !state.isCommandPanelVisible;
-    // Initialize categories when opening command panel
+    // Initialize all 7 categories as expanded when opening command panel
     if (newVisible && state.expandedCategories.size === 0) {
       return {
         isCommandPanelVisible: newVisible,
-        expandedCategories: new Set(['plan'])
+        expandedCategories: new Set([
+          'project-setup',
+          'phase-lifecycle',
+          'roadmap-ops',
+          'milestone-ops',
+          'quick-work',
+          'navigation',
+          'configuration',
+        ])
       };
     }
     return { isCommandPanelVisible: newVisible };
@@ -342,7 +350,16 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
 
   initializeCategories: () =>
     set(() => ({
-      expandedCategories: new Set(['plan']),
+      // Default all 7 categories to expanded per CONTEXT.md decision
+      expandedCategories: new Set([
+        'project-setup',
+        'phase-lifecycle',
+        'roadmap-ops',
+        'milestone-ops',
+        'quick-work',
+        'navigation',
+        'configuration',
+      ]),
     })),
 
   openCommandDialog: (command: GSDCommandDefinition, initialValues?: Record<string, string | number>) =>

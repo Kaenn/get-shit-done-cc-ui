@@ -38,22 +38,42 @@ export function GSDCommandPanel() {
         </button>
       </div>
 
-      {/* Category List */}
+      {/* Category List - 7 categories in logical workflow order */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         <GSDCommandCategory
-          category="plan"
-          label="Planning"
-          commands={commandsByCategory.plan}
+          category="project-setup"
+          label="Project Setup"
+          commands={commandsByCategory['project-setup']}
         />
         <GSDCommandCategory
-          category="execute"
-          label="Execution"
-          commands={commandsByCategory.execute}
+          category="phase-lifecycle"
+          label="Phase Lifecycle"
+          commands={commandsByCategory['phase-lifecycle']}
         />
         <GSDCommandCategory
-          category="settings"
-          label="Settings"
-          commands={commandsByCategory.settings}
+          category="roadmap-ops"
+          label="Roadmap Operations"
+          commands={commandsByCategory['roadmap-ops']}
+        />
+        <GSDCommandCategory
+          category="milestone-ops"
+          label="Milestone Operations"
+          commands={commandsByCategory['milestone-ops']}
+        />
+        <GSDCommandCategory
+          category="quick-work"
+          label="Quick Work"
+          commands={commandsByCategory['quick-work']}
+        />
+        <GSDCommandCategory
+          category="navigation"
+          label="Navigation"
+          commands={commandsByCategory.navigation}
+        />
+        <GSDCommandCategory
+          category="configuration"
+          label="Configuration"
+          commands={commandsByCategory.configuration}
         />
       </div>
     </div>
