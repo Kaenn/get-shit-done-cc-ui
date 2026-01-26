@@ -28,7 +28,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 - [x] **Phase 7: Icon Sidebar** - VSCode-style vertical icon bar for view switching (completed 2026-01-25)
 - [x] **Phase 8: Markdown Viewer** - Tabbed file viewer with frontmatter and syntax highlighting (completed 2026-01-26)
 - [x] **Phase 9: State Tree** - Hierarchical milestone/phase/plan tree with actions (completed 2026-01-26)
-- [ ] **Phase 10: Command Forms** - Smart forms with parameters and flags for GSD commands
+- [x] **Phase 10: Command Forms** - Smart forms with parameters and flags for GSD commands (completed 2026-01-26)
 - [ ] **Phase 11: npx Installation** - Cross-platform binary distribution via npm for `npx opcode`
 
 ## Phase Details
@@ -103,11 +103,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Expand command registry to 27 commands in 7 categories
-- [ ] 10-02-PLAN.md — Smart forms with React Hook Form + Zod validation
-- [ ] 10-03-PLAN.md — Flag toggle switches for command options
-- [ ] 10-04-PLAN.md — State prepopulation from STATE.md
-- [ ] 10-05-PLAN.md — Command execution with toast feedback
+- [x] 10-01-PLAN.md — Expand command registry to 27 commands in 7 categories
+- [x] 10-02-PLAN.md — Smart forms with React Hook Form + Zod validation
+- [x] 10-03-PLAN.md — Flag toggle switches for command options
+- [x] 10-04-PLAN.md — State prepopulation from STATE.md
+- [x] 10-05-PLAN.md — Command execution with toast feedback
 
 ### Phase 11: npx Installation
 
@@ -142,5 +142,5 @@ Plans:
 | 7. Icon Sidebar | v1.1 | 2/2 | Complete | 2026-01-25 |
 | 8. Markdown Viewer | v1.1 | 4/4 | Complete | 2026-01-26 |
 | 9. State Tree | v1.1 | 3/3 | Complete | 2026-01-26 |
-| 10. Command Forms | v1.1 | 0/5 | Not started | - |
+| 10. Command Forms | v1.1 | 5/5 | Complete | 2026-01-26 |
 | 11. npx Installation | v1.1 | 0/5 | Not started | - |

@@ -17,13 +17,13 @@ Requirements for v1.1 Context Enhancement milestone. Each maps to roadmap phases
 
 ### Commands Panel
 
-- [ ] **CMD-01**: Commands view shows all 27 GSD commands
-- [ ] **CMD-02**: Commands grouped into 7 categories (Project Setup, Phase Lifecycle, Roadmap Ops, Milestone Ops, Quick Work, Navigation, Configuration)
-- [ ] **CMD-03**: Click on command opens modal dialog
-- [ ] **CMD-04**: Modal contains smart form with fields matching command parameters
-- [ ] **CMD-05**: Form shows checkable flags where applicable (--skip-research, --gaps-only, etc.)
-- [ ] **CMD-06**: Form fields prepopulated with current state values (current phase number, etc.)
-- [ ] **CMD-07**: Submit executes command with form values in terminal
+- [x] **CMD-01**: Commands view shows all 27 GSD commands
+- [x] **CMD-02**: Commands grouped into 7 categories (Project Setup, Phase Lifecycle, Roadmap Ops, Milestone Ops, Quick Work, Navigation, Configuration)
+- [x] **CMD-03**: Click on command opens modal dialog
+- [x] **CMD-04**: Modal contains smart form with fields matching command parameters
+- [x] **CMD-05**: Form shows checkable flags where applicable (--skip-research, --gaps-only, etc.)
+- [x] **CMD-06**: Form fields prepopulated with current state values (current phase number, etc.)
+- [x] **CMD-07**: Submit executes command with form values in terminal
 
 ### State Tree
 
@@ -108,13 +108,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TREE-07 | Phase 9 | Complete |
 | TREE-08 | Phase 9 | Complete |
 | TREE-09 | Phase 9 | Complete |
-| CMD-01 | Phase 10 | Pending |
-| CMD-02 | Phase 10 | Pending |
-| CMD-03 | Phase 10 | Pending |
-| CMD-04 | Phase 10 | Pending |
-| CMD-05 | Phase 10 | Pending |
-| CMD-06 | Phase 10 | Pending |
-| CMD-07 | Phase 10 | Pending |
+| CMD-01 | Phase 10 | Complete |
+| CMD-02 | Phase 10 | Complete |
+| CMD-03 | Phase 10 | Complete |
+| CMD-04 | Phase 10 | Complete |
+| CMD-05 | Phase 10 | Complete |
+| CMD-06 | Phase 10 | Complete |
+| CMD-07 | Phase 10 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 27 total
