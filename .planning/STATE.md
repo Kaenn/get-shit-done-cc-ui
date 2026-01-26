@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-25)
 ## Current Position
 
 Phase: 11 of 11 (npx-installation)
-Plan: 01 of 05 complete
+Plan: 03 of 05 complete
 Status: In progress
-Last activity: 2026-01-26 — Completed 11-01-PLAN.md
+Last activity: 2026-01-26 — Completed 11-03-PLAN.md
 
-Progress: [███████████████████████] 100% (33/33 plans)
+Progress: [███████████████████████] 100% (35/35 plans)
 
 ## Performance Metrics
 
@@ -90,6 +90,9 @@ Recent decisions affecting current work:
 - crypto.timingSafeEqual for checksum comparison to prevent timing attacks (11-02)
 - Binary cached in npm/bin/ directory inside node_modules (11-02)
 - GSD_UI_PLATFORM environment variable for manual platform override (11-02)
+- Use houseabsolute/actions-rust-cross@v1 for all platforms in CI (11-03)
+- fail-fast: false ensures all platforms build even if one fails (11-03)
+- Per-binary SHA256 checksum files match npm/install.js expectations (11-03)
 
 ### Pending Todos
 
@@ -108,8 +111,8 @@ From research/SUMMARY.md:
 
 ## Session Continuity
 
-Last session: 2026-01-26T19:20:54Z
-Stopped at: Completed 11-01-PLAN.md (web binary build validation)
+Last session: 2026-01-26T19:37:52Z
+Stopped at: Completed 11-03-PLAN.md (GitHub Actions cross-platform build workflow)
 Resume file: None
-Status: Phase 11 in progress (1/5 plans complete)
-Next step: /gsd:execute-phase 11 02 (npm package structure)
+Status: Phase 11 in progress (3/5 plans complete)
+Next step: /gsd:execute-phase 11 04 (npm publish workflow)
