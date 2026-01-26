@@ -51,6 +51,40 @@ npx get-shit-done-cc-ui
 - [GitHub Repository](https://github.com/glennin-codes/get-shit-done-cc-ui)
 - [Issue Tracker](https://github.com/glennin-codes/get-shit-done-cc-ui/issues)
 
+## Release Process (Maintainers)
+
+### Prerequisites
+
+1. **Create NPM_TOKEN:**
+   - Go to [npmjs.com](https://www.npmjs.com/) > Account > Access Tokens
+   - Click "Generate New Token" > "Automation" (for CI/CD)
+   - Copy the token value
+
+2. **Configure GitHub secret:**
+   - Go to GitHub repo > Settings > Secrets and variables > Actions
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: paste the token from step 1
+
+### Releasing a new version
+
+```bash
+# Update version in npm/package.json
+./scripts/bump-version.sh X.Y.Z
+
+# Commit the version bump
+git commit -am "chore: bump version to vX.Y.Z"
+
+# Create and push tag
+git tag vX.Y.Z
+git push && git push --tags
+```
+
+This triggers the release pipeline:
+1. Build binaries for all platforms
+2. Upload binaries to GitHub Releases
+3. Publish npm package
+
 ## License
 
 AGPL-3.0 - see LICENSE file in the repository
