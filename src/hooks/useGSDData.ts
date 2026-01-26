@@ -7,9 +7,9 @@ import { useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useGSDStore } from '@/stores/gsdStore';
 import type { StateData } from '@/stores/gsdStore';
-import { parseStateMd, parseRoadmapMd, parsePlanMd } from '@/lib/gsd/parsers';
+import { parseStateMd, parseRoadmapMd, parsePlanMd, parseMilestones } from '@/lib/gsd/parsers';
 import type { PlanInfo } from '@/lib/gsd/parsers';
-import { buildTreeData } from '@/lib/gsd/tree-transforms';
+import { buildTreeData, buildMilestoneTree } from '@/lib/gsd/tree-transforms';
 import type { TreeNode } from '@/lib/gsd/tree-transforms';
 import { useGSDFileWatcher } from '@/lib/gsd/watcher';
 import { getNextAction } from '@/lib/gsd/commands';
@@ -36,7 +36,9 @@ export function useGSDData(projectPath: string | null): void {
   const {
     updateParsedData,
     setPhases,
+    setMilestoneData,
     setTreeData,
+    setArchivedTreeData,
     setLoading,
     setError,
     setNextAction,
@@ -56,7 +58,9 @@ export function useGSDData(projectPath: string | null): void {
       // No project path - clear data
       updateParsedData(null);
       setPhases([]);
+      setMilestoneData([]);
       setTreeData([]);
+      setArchivedTreeData([]);
       return;
     }
 
@@ -79,13 +83,18 @@ export function useGSDData(projectPath: string | null): void {
         updateParsedData(null);
       }
 
-      // Parse ROADMAP.md for phases
+      // Parse ROADMAP.md for phases and milestones
       let phases: ReturnType<typeof parseRoadmapMd> = [];
       if (result.roadmap_content) {
         phases = parseRoadmapMd(result.roadmap_content);
         setPhases(phases);
+
+        // Parse milestones from same ROADMAP.md content
+        const milestones = parseMilestones(result.roadmap_content, phases.length);
+        setMilestoneData(milestones);
       } else {
         setPhases([]);
+        setMilestoneData([]);
       }
 
       // Load plan files from Rust backend
@@ -102,18 +111,35 @@ export function useGSDData(projectPath: string | null): void {
         }
       }
 
-      // Build tree data from phases and plans
-      const treeData = buildTreeData(phases, plans, currentPhaseNumber);
-      setTreeData(treeData);
+      // Build 3-level tree data with milestones
+      if (phases.length > 0) {
+        const milestones = parseMilestones(result.roadmap_content || '', phases.length);
+        const { active, archived } = buildMilestoneTree(
+          milestones,
+          phases,
+          plans,
+          currentPhaseNumber,
+          projectPath
+        );
+        setTreeData(active);
+        setArchivedTreeData(archived);
+      } else {
+        // Fallback to 2-level tree if no phases
+        const treeData = buildTreeData(phases, plans, currentPhaseNumber, projectPath);
+        setTreeData(treeData);
+        setArchivedTreeData([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load GSD data');
       updateParsedData(null);
       setPhases([]);
+      setMilestoneData([]);
       setTreeData([]);
+      setArchivedTreeData([]);
     } finally {
       setLoading(false);
     }
-  }, [projectPath, updateParsedData, setPhases, setTreeData, setLoading, setError]);
+  }, [projectPath, updateParsedData, setPhases, setMilestoneData, setTreeData, setArchivedTreeData, setLoading, setError]);
 
   // Load on mount and projectPath change
   useEffect(() => {

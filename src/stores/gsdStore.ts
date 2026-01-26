@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { StateCreator } from 'zustand';
 import type { TreeNode } from '@/lib/gsd/tree-transforms';
 import type { GSDCommandDefinition } from '@/lib/gsd/command-registry';
+import type { MilestoneInfo } from '@/lib/gsd/parsers';
 
 // File tab interface for viewer
 export interface FileTab {
@@ -41,7 +42,9 @@ interface GSDState {
   // Runtime state (not persisted)
   parsedData: StateData | null;
   phases: PhaseInfo[];
+  milestoneData: MilestoneInfo[];
   treeData: TreeNode[];
+  archivedTreeData: TreeNode[];
   expandedNodes: Set<string>;
   hasHydrated: boolean;
   isLoading: boolean;
@@ -72,7 +75,9 @@ interface GSDState {
   setSidebarActiveView: (view: 'commands' | 'state') => void;
   updateParsedData: (data: StateData | null) => void;
   setPhases: (phases: PhaseInfo[]) => void;
+  setMilestoneData: (data: MilestoneInfo[]) => void;
   setTreeData: (data: TreeNode[]) => void;
+  setArchivedTreeData: (data: TreeNode[]) => void;
   toggleNode: (nodeId: string) => void;
   initializeExpanded: (currentPhaseNumber: number) => void;
   setHasHydrated: (value: boolean) => void;
@@ -110,7 +115,9 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
   // Initial runtime state
   parsedData: null,
   phases: [],
+  milestoneData: [],
   treeData: [],
+  archivedTreeData: [],
   expandedNodes: new Set<string>(),
   hasHydrated: false,
   isLoading: false,
@@ -158,7 +165,11 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
 
   setPhases: (phases: PhaseInfo[]) => set({ phases }),
 
+  setMilestoneData: (data: MilestoneInfo[]) => set({ milestoneData: data }),
+
   setTreeData: (data: TreeNode[]) => set({ treeData: data }),
+
+  setArchivedTreeData: (data: TreeNode[]) => set({ archivedTreeData: data }),
 
   toggleNode: (nodeId: string) =>
     set((state) => {
