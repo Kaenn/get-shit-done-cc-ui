@@ -4,6 +4,14 @@ import type { StateCreator } from 'zustand';
 import type { TreeNode } from '@/lib/gsd/tree-transforms';
 import type { GSDCommandDefinition } from '@/lib/gsd/command-registry';
 
+// File tab interface for viewer
+export interface FileTab {
+  id: string;           // Unique tab ID
+  filepath: string;     // Absolute file path
+  title: string;        // Display name (filename extracted from path)
+  content?: string;     // Cached file content (lazy loaded)
+}
+
 // Types for parsed data
 export interface StateData {
   currentPhase: number;
@@ -39,6 +47,10 @@ interface GSDState {
   isLoading: boolean;
   error: string | null;
 
+  // Viewer tab state (runtime only)
+  openTabs: FileTab[];
+  activeTabId: string | null;
+
   // Command execution state (runtime only)
   isCommandRunning: boolean;
   currentCommand: string | null;
@@ -67,6 +79,12 @@ interface GSDState {
   setLoading: (value: boolean) => void;
   setError: (error: string | null) => void;
 
+  // Viewer tab actions
+  openFile: (filepath: string) => void;
+  closeTab: (tabId: string) => void;
+  setActiveTab: (tabId: string) => void;
+  updateTabContent: (tabId: string, content: string) => void;
+
   // Command execution actions
   setCommandRunning: (command: string | null) => void;
   setNextAction: (action: { command: string; label: string } | null) => void;
@@ -81,7 +99,7 @@ interface GSDState {
   toggleShowInactiveCommands: () => void;
 }
 
-const gsdStore: StateCreator<GSDState> = (set) => ({
+const gsdStore: StateCreator<GSDState> = (set, get) => ({
   // Initial persisted state
   isPanelVisible: true,
   panelWidth: 75,
@@ -97,6 +115,10 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
   hasHydrated: false,
   isLoading: false,
   error: null,
+
+  // Initial viewer tab state
+  openTabs: [],
+  activeTabId: null,
 
   // Initial command execution state
   isCommandRunning: false,
@@ -159,6 +181,64 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
   setLoading: (value: boolean) => set({ isLoading: value }),
 
   setError: (error: string | null) => set({ error }),
+
+  // Viewer tab actions
+  openFile: (filepath: string) => {
+    const state = get();
+    // Check for existing tab with same filepath
+    const existing = state.openTabs.find(t => t.filepath === filepath);
+    if (existing) {
+      // Switch to existing tab instead of creating duplicate
+      set({ activeTabId: existing.id });
+      return;
+    }
+
+    // Create new tab
+    const newTab: FileTab = {
+      id: Date.now().toString(),
+      filepath,
+      title: filepath.split('/').pop() || 'Untitled',
+    };
+
+    set({
+      openTabs: [...state.openTabs, newTab],
+      activeTabId: newTab.id,
+    });
+  },
+
+  closeTab: (tabId: string) => {
+    const state = get();
+    const closedIndex = state.openTabs.findIndex(t => t.id === tabId);
+    const newTabs = state.openTabs.filter(t => t.id !== tabId);
+
+    if (newTabs.length === 0) {
+      // No tabs left
+      set({ openTabs: [], activeTabId: null });
+      return;
+    }
+
+    if (state.activeTabId === tabId) {
+      // Closing active tab - select adjacent
+      // Prefer next tab (right), fallback to previous (left) if closing last
+      const nextIndex = Math.min(closedIndex, newTabs.length - 1);
+      set({
+        openTabs: newTabs,
+        activeTabId: newTabs[nextIndex].id
+      });
+    } else {
+      // Closing inactive tab - keep current active
+      set({ openTabs: newTabs });
+    }
+  },
+
+  setActiveTab: (tabId: string) => set({ activeTabId: tabId }),
+
+  updateTabContent: (tabId: string, content: string) =>
+    set((state) => ({
+      openTabs: state.openTabs.map(t =>
+        t.id === tabId ? { ...t, content } : t
+      ),
+    })),
 
   // Command execution actions
   setCommandRunning: (command: string | null) =>
