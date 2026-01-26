@@ -3,7 +3,6 @@
  * Integrates GSDTreeView for active milestones with built-in archived section
  */
 
-import { FolderTree } from 'lucide-react';
 import { useGSDStore } from '@/stores/gsdStore';
 import { GSDTreeView } from './GSDTreeView';
 
@@ -12,14 +11,8 @@ export function GSDStatePanel() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-        <FolderTree className="w-5 h-5 text-primary" />
-        <h2 className="text-sm font-semibold">State Tree</h2>
-      </div>
-
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-2">
         {isLoading && (
           <div className="text-sm text-muted-foreground">Loading...</div>
         )}

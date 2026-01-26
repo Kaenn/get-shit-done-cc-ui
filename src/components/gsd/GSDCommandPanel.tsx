@@ -3,7 +3,7 @@
  * Displays all GSD commands grouped by category
  */
 
-import { FolderOpen, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getCommandsByCategory } from '@/lib/gsd/command-registry';
 import { useGSDStore } from '@/stores/gsdStore';
@@ -19,16 +19,12 @@ export function GSDCommandPanel() {
     <div className={cn(
       "flex flex-col h-full bg-background border-r border-border"
     )}>
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30">
-        <FolderOpen className="w-4 h-4 text-primary" />
-        <h2 className="text-sm font-semibold">Commands</h2>
-
-        {/* Inactive toggle button */}
+      {/* Minimal header - just toggle button */}
+      <div className="flex items-center justify-end px-2 py-1 border-b border-border">
         <button
           onClick={toggleShowInactiveCommands}
           className={cn(
-            "ml-auto p-1 rounded hover:bg-muted transition-colors",
+            "p-1 rounded hover:bg-muted transition-colors",
             "text-muted-foreground hover:text-foreground"
           )}
           title={showInactiveCommands ? "Hide inactive commands" : "Show inactive commands"}
