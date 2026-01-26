@@ -26,6 +26,18 @@ export interface PlanInfo {
   status: 'pending' | 'in-progress' | 'complete';
 }
 
+export interface MilestoneInfo {
+  number: number;        // e.g., 1 for v1.0, 2 for v1.1
+  name: string;          // e.g., "v1.0 MVP", "v1.1 Context Enhancement"
+  goal: string;          // Milestone goal from ROADMAP.md
+  status: 'pending' | 'in-progress' | 'complete';
+  archived: boolean;     // true if milestone is in archived section
+  phaseRange: {          // Which phases belong to this milestone
+    start: number;       // e.g., 1 for phases 1-6
+    end: number;         // e.g., 6 for phases 1-6
+  };
+}
+
 /**
  * Parse STATE.md content into structured data
  * Format example:
@@ -205,5 +217,142 @@ export function parsePlanMd(content: string, hasSummary: boolean): PlanInfo | nu
   } catch (error) {
     console.error('Error parsing PLAN.md:', error);
     return null;
+  }
+}
+
+/**
+ * Parse ROADMAP.md content into milestone list
+ * Format example:
+ *   ## Milestones
+ *   - **v1.0 MVP** — Phases 1-6 (shipped 2026-01-25) — [Archive](...)
+ *   - **v1.1 Context Enhancement** — Phases 7-10 (in progress)
+ *
+ *   ### v1.1 Context Enhancement (In Progress)
+ *   **Milestone Goal:** Enhance GSD-UI with better project visualization...
+ */
+export function parseMilestones(content: string, totalPhases: number): MilestoneInfo[] {
+  const milestones: MilestoneInfo[] = [];
+
+  try {
+    const lines = content.split('\n');
+
+    // First pass: find milestone lines in "## Milestones" section
+    let inMilestonesSection = false;
+    const milestoneLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.match(/^##\s+Milestones\s*$/i)) {
+        inMilestonesSection = true;
+        continue;
+      }
+      if (inMilestonesSection) {
+        // Stop at next ## section
+        if (line.match(/^##\s+/)) {
+          break;
+        }
+        // Collect milestone bullet lines
+        if (line.match(/^-\s+\*\*/)) {
+          milestoneLines.push(line);
+        }
+      }
+    }
+
+    // If no milestones section found, create implicit milestone
+    if (milestoneLines.length === 0) {
+      return [{
+        number: 1,
+        name: 'Current Project',
+        goal: '',
+        status: 'in-progress',
+        archived: false,
+        phaseRange: { start: 1, end: totalPhases },
+      }];
+    }
+
+    // Parse each milestone line
+    for (const line of milestoneLines) {
+      // Match: **v1.0 MVP** — Phases 1-6 (shipped/in progress)
+      const match = line.match(
+        /\*\*(v(\d+)\.(\d+)\s+([^*]+))\*\*\s*—\s*Phases?\s*(\d+)-(\d+)\s*(?:\(([^)]+)\))?/i
+      );
+
+      if (match) {
+        const fullName = match[1].trim();  // "v1.0 MVP"
+        const majorVersion = parseInt(match[2], 10);  // 1
+        const minorVersion = parseInt(match[3], 10);  // 0
+        const milestoneNumber = majorVersion * 10 + minorVersion;  // 10 for v1.0, 11 for v1.1
+        const phaseStart = parseInt(match[5], 10);
+        const phaseEnd = parseInt(match[6], 10);
+        const statusText = match[7]?.toLowerCase() || '';
+
+        // Determine archived and status
+        const isArchived = statusText.includes('shipped') ||
+                          statusText.includes('complete') ||
+                          line.includes('[Archive]');
+
+        let status: MilestoneInfo['status'];
+        if (isArchived) {
+          status = 'complete';
+        } else if (statusText.includes('in progress') || statusText.includes('in-progress')) {
+          status = 'in-progress';
+        } else {
+          status = 'pending';
+        }
+
+        milestones.push({
+          number: milestoneNumber,
+          name: fullName,
+          goal: '',  // Will be filled in second pass
+          status,
+          archived: isArchived,
+          phaseRange: { start: phaseStart, end: phaseEnd },
+        });
+      }
+    }
+
+    // Second pass: find goals for each milestone
+    // Look for "### v1.1 Context Enhancement" sections with "**Milestone Goal:**"
+    for (const milestone of milestones) {
+      const versionMatch = milestone.name.match(/^v(\d+)\.(\d+)/);
+      if (!versionMatch) continue;
+
+      // Build regex to find the milestone section header
+      // Match: "### v1.1 Context Enhancement (In Progress)" or similar
+      const escapedName = milestone.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const sectionRegex = new RegExp(`^###\\s+${escapedName}`, 'im');
+
+      let inMilestoneSection = false;
+      for (const line of lines) {
+        if (sectionRegex.test(line)) {
+          inMilestoneSection = true;
+          continue;
+        }
+        if (inMilestoneSection) {
+          // Stop at next ### section
+          if (line.match(/^###\s+/)) {
+            break;
+          }
+          // Look for milestone goal
+          const goalMatch = line.match(/\*\*(?:Milestone\s+)?Goal\*?\*?:\s*(.+)$/i);
+          if (goalMatch) {
+            milestone.goal = goalMatch[1].trim();
+            break;
+          }
+        }
+      }
+    }
+
+    return milestones;
+  } catch (error) {
+    console.error('Error parsing milestones:', error);
+    // Return implicit milestone on error
+    return [{
+      number: 1,
+      name: 'Current Project',
+      goal: '',
+      status: 'in-progress',
+      archived: false,
+      phaseRange: { start: 1, end: totalPhases },
+    }];
   }
 }
