@@ -29,6 +29,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 - [x] **Phase 8: Markdown Viewer** - Tabbed file viewer with frontmatter and syntax highlighting (completed 2026-01-26)
 - [x] **Phase 9: State Tree** - Hierarchical milestone/phase/plan tree with actions (completed 2026-01-26)
 - [ ] **Phase 10: Command Forms** - Smart forms with parameters and flags for GSD commands
+- [ ] **Phase 11: npx Installation** - Cross-platform binary distribution via npm for `npx opcode`
 
 ## Phase Details
 
@@ -99,12 +100,34 @@ Plans:
   4. User can toggle applicable flags (checkboxes) for the command
   5. User sees form fields prepopulated with current state values where applicable
   6. User can submit the form to execute the command in the terminal
-**Plans:** TBD
+**Plans:** 5 plans
 
 Plans:
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
-- [ ] 10-03: TBD
+- [ ] 10-01-PLAN.md — Expand command registry to 27 commands in 7 categories
+- [ ] 10-02-PLAN.md — Smart forms with React Hook Form + Zod validation
+- [ ] 10-03-PLAN.md — Flag toggle switches for command options
+- [ ] 10-04-PLAN.md — State prepopulation from STATE.md
+- [ ] 10-05-PLAN.md — Command execution with toast feedback
+
+### Phase 11: npx Installation
+
+**Goal:** User can install and run opcode via `npx opcode` without Rust toolchain
+**Depends on:** None (independent infrastructure phase)
+**Requirements:** NPX-01, NPX-02, NPX-03, NPX-04, NPX-05
+**Success Criteria** (what must be TRUE):
+  1. `npx opcode` works on fresh machine with only Node.js (>=16) installed
+  2. Binary download completes in <30 seconds on average connection
+  3. All P0 platforms supported (Linux x64, macOS x64/arm64, Windows x64)
+  4. Version is synchronized across all package manifests automatically
+  5. Release process is fully automated via git tags
+**Plans:** 5 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — Local build validation: build scripts, standalone binary testing
+- [ ] 11-02-PLAN.md — npm package structure: wrapper scripts, postinstall download
+- [ ] 11-03-PLAN.md — CI/CD pipeline: GitHub Actions workflow for cross-compilation
+- [ ] 11-04-PLAN.md — npm publishing: automated release workflow with tag triggers
+- [ ] 11-05-PLAN.md — Documentation and polish: README updates, version sync script
 
 ## Progress
 
@@ -119,4 +142,5 @@ Plans:
 | 7. Icon Sidebar | v1.1 | 2/2 | Complete | 2026-01-25 |
 | 8. Markdown Viewer | v1.1 | 4/4 | Complete | 2026-01-26 |
 | 9. State Tree | v1.1 | 3/3 | Complete | 2026-01-26 |
-| 10. Command Forms | v1.1 | 0/? | Not started | - |
+| 10. Command Forms | v1.1 | 0/5 | Not started | - |
+| 11. npx Installation | v1.1 | 0/5 | Not started | - |
