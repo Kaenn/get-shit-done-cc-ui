@@ -87,7 +87,8 @@ interface GSDState {
 
   // Viewer tab actions
   openFile: (filepath: string) => void;
-  openFiles: (filepaths: string[]) => void;
+  openFiles: (filepaths: string[], clearExisting?: boolean) => void;
+  closeAllTabs: () => void;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   updateTabContent: (tabId: string, content: string) => void;
@@ -240,19 +241,20 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
     });
   },
 
-  openFiles: (filepaths: string[]) => {
+  openFiles: (filepaths: string[], clearExisting = false) => {
     if (filepaths.length === 0) return;
 
     const state = get();
-    let currentTabs = [...state.openTabs];
-    let lastNewTabId: string | null = null;
+    // Start with empty tabs if clearExisting, otherwise keep existing
+    let currentTabs = clearExisting ? [] : [...state.openTabs];
+    let firstNewTabId: string | null = null;
 
     for (const filepath of filepaths) {
       // Check for existing tab with same filepath
       const existing = currentTabs.find(t => t.filepath === filepath);
       if (existing) {
-        // Already open, set as active (last one wins)
-        lastNewTabId = existing.id;
+        // Already open, track first tab
+        if (!firstNewTabId) firstNewTabId = existing.id;
         continue;
       }
 
@@ -263,16 +265,18 @@ const gsdStore: StateCreator<GSDState> = (set, get) => ({
         title: filepath.split('/').pop() || 'Untitled',
       };
       currentTabs.push(newTab);
-      lastNewTabId = newTab.id;
+      if (!firstNewTabId) firstNewTabId = newTab.id;
     }
 
     // Set first new tab as active, ensure panel visible
     set({
       openTabs: currentTabs,
-      activeTabId: lastNewTabId,
+      activeTabId: firstNewTabId,
       isPanelVisible: true,
     });
   },
+
+  closeAllTabs: () => set({ openTabs: [], activeTabId: null }),
 
   closeTab: (tabId: string) => {
     const state = get();

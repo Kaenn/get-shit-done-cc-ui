@@ -3,8 +3,9 @@
  * Renders milestones, phases, and plans with expand/collapse, status dots, and progress
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { cn } from '@/lib/utils';
 import { useGSDStore } from '@/stores/gsdStore';
 import { getMilestoneActionLinks, getPhaseActionLinks } from '@/lib/gsd/commands';
@@ -50,14 +51,27 @@ export const GSDTreeNode = React.memo(
     // Determine if node is clickable (has context files or single filepath)
     const isClickable = (node.contextFiles && node.contextFiles.length > 0) || !!node.filepath;
 
-    // Handle node click - open context files or single file
-    const handleNodeClick = () => {
+    // Handle node click - filter existing files and open with tab reset
+    const handleNodeClick = useCallback(async () => {
       if (node.contextFiles && node.contextFiles.length > 0) {
-        openFiles(node.contextFiles);
+        try {
+          // Filter to only files that exist
+          const existingFiles = await invoke<string[]>('filter_existing_files', {
+            filePaths: node.contextFiles,
+          });
+          if (existingFiles.length > 0) {
+            // Clear existing tabs and open filtered files
+            openFiles(existingFiles, true);
+          }
+        } catch (err) {
+          console.error('Failed to filter files:', err);
+          // Fallback: try opening all files (errors will show in tabs)
+          openFiles(node.contextFiles, true);
+        }
       } else if (node.filepath) {
         openFile(node.filepath);
       }
-    };
+    }, [node.contextFiles, node.filepath, openFile, openFiles]);
 
     // Status indicator - colored dot only (per CONTEXT.md: "Color-only status, no icons")
     const StatusDot = ({ status }: { status: 'pending' | 'in-progress' | 'complete' }) => {

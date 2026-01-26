@@ -2339,6 +2339,19 @@ pub async fn read_text_file(file_path: String) -> Result<String, String> {
         .map_err(|e| format!("Failed to read file: {}", e))
 }
 
+/// Filters a list of file paths to only include files that exist
+/// Used by the file viewer to filter out non-existent files before opening tabs
+#[tauri::command]
+pub async fn filter_existing_files(file_paths: Vec<String>) -> Vec<String> {
+    file_paths
+        .into_iter()
+        .filter(|path| {
+            let p = PathBuf::from(path);
+            p.exists() && p.is_file()
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
