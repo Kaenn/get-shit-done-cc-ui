@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-25)
 ## Current Position
 
 Phase: 11 of 11 (npx-installation)
-Plan: 04 of 05 complete
-Status: In progress
-Last activity: 2026-01-26 — Completed 11-04-PLAN.md
+Plan: 05 of 05 complete
+Status: Phase complete
+Last activity: 2026-01-26 — Completed 11-05-PLAN.md (version sync and documentation)
 
-Progress: [███████████████████████] 100% (35/35 plans)
+Progress: [████████████████████████] 100% (36/36 plans)
 
 ## Performance Metrics
 
@@ -96,6 +96,8 @@ Recent decisions affecting current work:
 - publish-npm job depends on create-release to ensure binaries available before npm publish (11-04)
 - NPM Automation token type required for CI/CD compatibility (11-04)
 - secrets: inherit passes NPM_TOKEN without explicit mapping (11-04)
+- Conditional check for npm/package.json in bump-version.sh (11-05)
+- npx installation as primary method in README (11-05)
 
 ### Pending Todos
 
@@ -114,8 +116,8 @@ From research/SUMMARY.md:
 
 ## Session Continuity
 
-Last session: 2026-01-26T19:40:30Z
-Stopped at: Completed 11-04-PLAN.md (npm publish workflow)
+Last session: 2026-01-26T19:43:36Z
+Stopped at: Completed 11-05-PLAN.md (version sync and documentation)
 Resume file: None
-Status: Phase 11 in progress (4/5 plans complete)
-Next step: /gsd:execute-phase 11 05 (version bump script and integration)
+Status: Phase 11 complete (5/5 plans)
+Next step: Release testing (push v0.2.2 tag, verify npm publish, test npx)
