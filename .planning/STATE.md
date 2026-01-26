@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-25)
 ## Current Position
 
 Phase: 8 of 10 (Markdown Viewer)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-01-25 — Completed Phase 7: Icon Sidebar
+Plan: 1 of TBD
+Status: In progress
+Last activity: 2026-01-26 — Completed 08-01-PLAN.md
 
-Progress: [████████████░░░░░░░░] 61% (20/33 plans)
+Progress: [████████████░░░░░░░░] 64% (21/33 plans)
 
 ## Performance Metrics
 
@@ -43,6 +43,9 @@ Recent decisions affecting current work:
 - Prevent toggle deselection to maintain active view (07-01)
 - GSDIconSidebar MUST be first child in flex container for left edge positioning (07-02)
 - Instant view switching without animation (07-02)
+- Tab state is runtime-only (not persisted across app restarts) (08-01)
+- Duplicate filepath detection prevents multiple tabs for same file (08-01)
+- Closing active tab auto-selects adjacent tab (prefer right, fallback left) (08-01)
 
 ### Pending Todos
 
@@ -61,8 +64,8 @@ From research/SUMMARY.md:
 
 ## Session Continuity
 
-Last session: 2026-01-25
-Stopped at: Completed Phase 7: Icon Sidebar
+Last session: 2026-01-26
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
-Status: Ready for Phase 8
-Next step: /gsd:discuss-phase 8 or /gsd:plan-phase 8
+Status: Phase 8 in progress
+Next step: Continue with 08-02 (Tab Bar UI) or plan next phase task
