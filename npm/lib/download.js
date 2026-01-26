@@ -52,7 +52,7 @@ function getPlatformBinaryName(platformKey) {
     'linux-x64': 'gsd-ui-web-linux-x64',
     'darwin-x64': 'gsd-ui-web-darwin-x64',
     'darwin-arm64': 'gsd-ui-web-darwin-arm64',
-    'win32-x64': 'gsd-ui-web.exe',
+    'win32-x64': 'gsd-ui-web-win32-x64.exe',
   };
 
   const binaryName = mapping[platformKey];
