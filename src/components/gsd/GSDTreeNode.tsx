@@ -1,10 +1,10 @@
 /**
  * Recursive tree node component for GSD visualization
- * Renders phases and plans with expand/collapse, status icons, and progress
+ * Renders phases and plans with expand/collapse, status dots, and progress
  */
 
 import React from 'react';
-import { ChevronRight, Circle, CircleCheck, Loader2, Play } from 'lucide-react';
+import { ChevronRight, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGSDStore } from '@/stores/gsdStore';
 import { getCommandForNode, getCommandLabel } from '@/lib/gsd/commands';
@@ -47,22 +47,19 @@ export const GSDTreeNode = React.memo(
       }
     };
 
-    // Status icon based on node status
-    const StatusIcon = () => {
-      switch (node.status) {
-        case 'complete':
-          return (
-            <CircleCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
-          );
-        case 'in-progress':
-          return (
-            <Loader2 className="w-4 h-4 text-blue-500 animate-spin flex-shrink-0" />
-          );
-        case 'pending':
-          return (
-            <Circle className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
-          );
-      }
+    // Status indicator - colored dot only (per CONTEXT.md: "Color-only status, no icons")
+    const StatusDot = ({ status }: { status: 'pending' | 'in-progress' | 'complete' }) => {
+      return (
+        <div
+          className={cn(
+            'w-2 h-2 rounded-full flex-shrink-0',
+            status === 'pending' && 'bg-gray-400',
+            status === 'in-progress' && 'bg-blue-500 animate-pulse',
+            status === 'complete' && 'bg-green-500'
+          )}
+          aria-hidden="true"
+        />
+      );
     };
 
     return (
@@ -101,7 +98,7 @@ export const GSDTreeNode = React.memo(
             <div className="w-4" /> // Spacer for alignment
           )}
 
-          <StatusIcon />
+          <StatusDot status={node.status} />
 
           <span
             className={cn(
