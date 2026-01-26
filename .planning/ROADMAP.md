@@ -59,12 +59,13 @@ Plans:
   3. User sees collapsible frontmatter section at the top of each file
   4. User sees rendered markdown content with syntax-highlighted code blocks
   5. Opening an already-open file switches to its existing tab (no duplicates)
-**Plans:** TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
-- [ ] 08-03: TBD
+- [ ] 08-01-PLAN.md — Core infrastructure: gray-matter dependency, store extension with tab management
+- [ ] 08-02-PLAN.md — Viewer shell: GSDFileViewer container, scrollable tabs, GSDPanel integration
+- [ ] 08-03-PLAN.md — Content rendering: markdown renderer, frontmatter display, code blocks with copy
+- [ ] 08-04-PLAN.md — Integration: file loading via Tauri fs, wire content rendering into viewer
 
 ### Phase 9: State Tree
 
@@ -116,6 +117,6 @@ Plans:
 | 5. Rebranding | v1.0 | 3/3 | Complete | 2026-01-25 |
 | 6. Conversation View | v1.0 | 4/4 | Complete | 2026-01-25 |
 | 7. Icon Sidebar | v1.1 | 2/2 | Complete | 2026-01-25 |
-| 8. Markdown Viewer | v1.1 | 0/? | Not started | - |
+| 8. Markdown Viewer | v1.1 | 0/4 | Planned | - |
 | 9. State Tree | v1.1 | 0/? | Not started | - |
 | 10. Command Forms | v1.1 | 0/? | Not started | - |
