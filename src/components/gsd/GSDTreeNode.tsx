@@ -76,9 +76,9 @@ export const GSDTreeNode = React.memo(
         {/* Node row */}
         <div
           className={cn(
-            'group flex items-center gap-2 py-1.5 px-2 rounded',
+            'group flex items-center gap-1.5 py-1 px-1 rounded',
             !isArchivedNode && 'hover:bg-muted/50 transition-colors',
-            depth > 0 && 'ml-6',
+            depth > 0 && 'ml-4',
             isCurrentPhase && 'bg-primary/10 border border-primary/30',
             isArchivedNode && 'opacity-60 cursor-default',
             !isArchivedNode && node.status === 'complete' && 'opacity-60'
