@@ -27,7 +27,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 
 - [x] **Phase 7: Icon Sidebar** - VSCode-style vertical icon bar for view switching (completed 2026-01-25)
 - [x] **Phase 8: Markdown Viewer** - Tabbed file viewer with frontmatter and syntax highlighting (completed 2026-01-26)
-- [ ] **Phase 9: State Tree** - Hierarchical milestone/phase/plan tree with actions
+- [x] **Phase 9: State Tree** - Hierarchical milestone/phase/plan tree with actions (completed 2026-01-26)
 - [ ] **Phase 10: Command Forms** - Smart forms with parameters and flags for GSD commands
 
 ## Phase Details
@@ -83,9 +83,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Data layer: MilestoneInfo type, parser, 3-level tree transforms with filepath
-- [ ] 09-02-PLAN.md — Visual refinement: status dots, file opening on click, milestone rendering
-- [ ] 09-03-PLAN.md — Archived section and integration: GSDArchivedSection, GSDStatePanel wiring
+- [x] 09-01-PLAN.md — Data layer: MilestoneInfo type, parser, 3-level tree transforms with filepath
+- [x] 09-02-PLAN.md — Visual refinement: status dots, file opening on click, milestone rendering
+- [x] 09-03-PLAN.md — Archived section and integration: GSDArchivedSection, GSDStatePanel wiring
 
 ### Phase 10: Command Forms
 
@@ -118,5 +118,5 @@ Plans:
 | 6. Conversation View | v1.0 | 4/4 | Complete | 2026-01-25 |
 | 7. Icon Sidebar | v1.1 | 2/2 | Complete | 2026-01-25 |
 | 8. Markdown Viewer | v1.1 | 4/4 | Complete | 2026-01-26 |
-| 9. State Tree | v1.1 | 0/3 | Not started | - |
+| 9. State Tree | v1.1 | 3/3 | Complete | 2026-01-26 |
 | 10. Command Forms | v1.1 | 0/? | Not started | - |

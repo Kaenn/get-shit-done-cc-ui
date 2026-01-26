@@ -27,24 +27,24 @@ Requirements for v1.1 Context Enhancement milestone. Each maps to roadmap phases
 
 ### State Tree
 
-- [ ] **TREE-01**: State view shows hierarchical tree of current milestone
-- [ ] **TREE-02**: Tree displays 3 levels: milestone → phases → plans
-- [ ] **TREE-03**: Nodes show status indicators (pending/in-progress/complete)
-- [ ] **TREE-04**: Nodes are expandable/collapsible
-- [ ] **TREE-05**: Click on node opens corresponding file in right pane viewer
-- [ ] **TREE-06**: Nodes have inline action buttons (execute, plan, etc.) based on status
-- [ ] **TREE-07**: Archived milestones section shows collapsed past milestones
-- [ ] **TREE-08**: Clicking archived milestone opens its markdown file in viewer
-- [ ] **TREE-09**: Right-click on node opens context menu with available actions
+- [x] **TREE-01**: State view shows hierarchical tree of current milestone
+- [x] **TREE-02**: Tree displays 3 levels: milestone → phases → plans
+- [x] **TREE-03**: Nodes show status indicators (pending/in-progress/complete)
+- [x] **TREE-04**: Nodes are expandable/collapsible
+- [x] **TREE-05**: Click on node opens corresponding file in right pane viewer
+- [x] **TREE-06**: Nodes have inline action buttons (execute, plan, etc.) based on status
+- [x] **TREE-07**: Archived milestones section shows collapsed past milestones
+- [x] **TREE-08**: Clicking archived milestone opens its markdown file in viewer
+- [x] **TREE-09**: Right-click on node opens context menu with available actions (replaced by inline actions per CONTEXT.md)
 
 ### Markdown Viewer
 
-- [ ] **VIEW-01**: Right pane displays state file viewer instead of status panel
-- [ ] **VIEW-02**: Viewer has tabbed interface for multiple open files
-- [ ] **VIEW-03**: Opening file reuses existing tab if file already open
-- [ ] **VIEW-04**: Each tab shows collapsible frontmatter section at top
-- [ ] **VIEW-05**: Tab content renders markdown below frontmatter (read-only)
-- [ ] **VIEW-06**: Code blocks have syntax highlighting
+- [x] **VIEW-01**: Right pane displays state file viewer instead of status panel
+- [x] **VIEW-02**: Viewer has tabbed interface for multiple open files
+- [x] **VIEW-03**: Opening file reuses existing tab if file already open
+- [x] **VIEW-04**: Each tab shows collapsible frontmatter section at top
+- [x] **VIEW-05**: Tab content renders markdown below frontmatter (read-only)
+- [x] **VIEW-06**: Code blocks have syntax highlighting
 
 ## v1.2+ Requirements
 
@@ -93,21 +93,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SIDE-03 | Phase 7 | Complete |
 | SIDE-04 | Phase 7 | Complete |
 | SIDE-05 | Phase 7 | Complete |
-| VIEW-01 | Phase 8 | Pending |
-| VIEW-02 | Phase 8 | Pending |
-| VIEW-03 | Phase 8 | Pending |
-| VIEW-04 | Phase 8 | Pending |
-| VIEW-05 | Phase 8 | Pending |
-| VIEW-06 | Phase 8 | Pending |
-| TREE-01 | Phase 9 | Pending |
-| TREE-02 | Phase 9 | Pending |
-| TREE-03 | Phase 9 | Pending |
-| TREE-04 | Phase 9 | Pending |
-| TREE-05 | Phase 9 | Pending |
-| TREE-06 | Phase 9 | Pending |
-| TREE-07 | Phase 9 | Pending |
-| TREE-08 | Phase 9 | Pending |
-| TREE-09 | Phase 9 | Pending |
+| VIEW-01 | Phase 8 | Complete |
+| VIEW-02 | Phase 8 | Complete |
+| VIEW-03 | Phase 8 | Complete |
+| VIEW-04 | Phase 8 | Complete |
+| VIEW-05 | Phase 8 | Complete |
+| VIEW-06 | Phase 8 | Complete |
+| TREE-01 | Phase 9 | Complete |
+| TREE-02 | Phase 9 | Complete |
+| TREE-03 | Phase 9 | Complete |
+| TREE-04 | Phase 9 | Complete |
+| TREE-05 | Phase 9 | Complete |
+| TREE-06 | Phase 9 | Complete |
+| TREE-07 | Phase 9 | Complete |
+| TREE-08 | Phase 9 | Complete |
+| TREE-09 | Phase 9 | Complete |
 | CMD-01 | Phase 10 | Pending |
 | CMD-02 | Phase 10 | Pending |
 | CMD-03 | Phase 10 | Pending |
