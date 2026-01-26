@@ -127,4 +127,12 @@ jobs:
 
             - macOS: Open the `.dmg` and drag opcode to Applications.
             - Linux: `chmod +x` the `.AppImage` and run it, or install the `.deb` on Debian/Ubuntu.
-            
+
+  # Publish npm package AFTER binaries are on GitHub Releases
+  # This ensures postinstall can download binaries immediately
+  publish-npm:
+    name: Publish npm
+    needs: [create-release]
+    uses: ./.github/workflows/publish-npm.yml
+    secrets: inherit
+
