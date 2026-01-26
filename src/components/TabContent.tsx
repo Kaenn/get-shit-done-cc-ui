@@ -22,6 +22,20 @@ const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor').then(m =
 // const ClaudeFileEditor = lazy(() => import('@/components/ClaudeFileEditor').then(m => ({ default: m.ClaudeFileEditor })));
 
 // Import non-lazy components for projects view
+import { GSDPanel } from '@/components/gsd/GSDPanel';
+import { useGSDData } from '@/hooks/useGSDData';
+
+// Wrapper component for GSD panel integration
+function GSDPanelWrapper({
+  projectPath,
+  children
+}: {
+  projectPath?: string;
+  children: React.ReactNode
+}) {
+  useGSDData(projectPath || null);
+  return <GSDPanel>{children}</GSDPanel>;
+}
 
 interface TabPanelProps {
   tab: Tab;
@@ -247,26 +261,35 @@ const TabPanel: React.FC<TabPanelProps> = ({ tab, isActive }) => {
       
       case 'chat':
         return (
-          <div className="h-full">
-            <ClaudeCodeSession
-              session={tab.sessionData} // Pass the full session object if available
-              initialProjectPath={tab.initialProjectPath || tab.sessionId}
-              onBack={() => {
-                // Go back to projects view in the same tab
-                updateTab(tab.id, {
-                  type: 'projects',
-                  title: 'Projects',
-                });
-              }}
-              onProjectPathChange={(path: string) => {
-                // Update tab title with directory name
-                const dirName = path.split('/').pop() || path.split('\\').pop() || 'Session';
-                updateTab(tab.id, {
-                  title: dirName
-                });
-              }}
-            />
-          </div>
+          <GSDPanelWrapper projectPath={tab.initialProjectPath}>
+            <div className="h-full">
+              <ClaudeCodeSession
+                session={tab.sessionData} // Pass the full session object if available
+                initialProjectPath={tab.initialProjectPath || tab.sessionId}
+                initialCommand={tab.initialCommand}
+                isActive={isActive}
+                onInitialCommandConsumed={() => {
+                  // Clear the initial command so it doesn't re-execute on re-render
+                  updateTab(tab.id, { initialCommand: undefined });
+                }}
+                onBack={() => {
+                  // Go back to projects view in the same tab
+                  updateTab(tab.id, {
+                    type: 'projects',
+                    title: 'Projects',
+                  });
+                }}
+                onProjectPathChange={(path: string) => {
+                  // Update tab title with directory name and initialProjectPath for GSD panel
+                  const dirName = path.split('/').pop() || path.split('\\').pop() || 'Session';
+                  updateTab(tab.id, {
+                    title: dirName,
+                    initialProjectPath: path
+                  });
+                }}
+              />
+            </div>
+          </GSDPanelWrapper>
         );
       
       case 'agent':

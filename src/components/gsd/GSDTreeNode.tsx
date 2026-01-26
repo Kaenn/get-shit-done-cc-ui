@@ -1,0 +1,184 @@
+/**
+ * Recursive tree node component for GSD visualization
+ * Renders phases and plans with expand/collapse, status icons, and progress
+ */
+
+import React from 'react';
+import { ChevronRight, Circle, CircleCheck, Loader2, Play } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useGSDStore } from '@/stores/gsdStore';
+import { getCommandForNode, getCommandLabel } from '@/lib/gsd/commands';
+import { api } from '@/lib/api';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { TreeNode } from '@/lib/gsd/tree-transforms';
+
+interface TreeNodeProps {
+  node: TreeNode;
+  depth: number;
+  currentPhaseNumber: number;
+  projectPath: string | null;
+}
+
+export const GSDTreeNode = React.memo(
+  ({ node, depth, currentPhaseNumber, projectPath }: TreeNodeProps) => {
+    const { expandedNodes, toggleNode, isCommandRunning, setCommandRunning } = useGSDStore();
+    const isExpanded = expandedNodes.has(node.id);
+    const hasChildren = node.children && node.children.length > 0;
+    const isCurrentPhase =
+      node.type === 'phase' && node.id === `phase-${currentPhaseNumber}`;
+
+    // Determine if this node has a clickable command
+    const command = getCommandForNode(node, currentPhaseNumber);
+    const isClickable = command !== null && !isCommandRunning;
+
+    // Command execution handler
+    const handleNodeClick = async (e: React.MouseEvent) => {
+      e.stopPropagation(); // Prevent expand/collapse
+      if (!command || isCommandRunning || !projectPath) return;
+
+      setCommandRunning(command);
+      try {
+        // Send /clear followed by the command
+        await api.executeClaudeCode(projectPath, `/clear\n${command}`, 'sonnet');
+      } catch (error) {
+        console.error('GSD command failed:', error);
+      } finally {
+        setCommandRunning(null);
+      }
+    };
+
+    // Status icon based on node status
+    const StatusIcon = () => {
+      switch (node.status) {
+        case 'complete':
+          return (
+            <CircleCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
+          );
+        case 'in-progress':
+          return (
+            <Loader2 className="w-4 h-4 text-blue-500 animate-spin flex-shrink-0" />
+          );
+        case 'pending':
+          return (
+            <Circle className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
+          );
+      }
+    };
+
+    return (
+      <div
+        role="treeitem"
+        aria-expanded={hasChildren ? isExpanded : undefined}
+      >
+        {/* Node row */}
+        <div
+          className={cn(
+            'group flex items-center gap-2 py-1.5 px-2 rounded',
+            'hover:bg-muted/50 transition-colors',
+            hasChildren && 'cursor-pointer',
+            depth > 0 && 'ml-6',
+            isCurrentPhase && 'bg-primary/10 border border-primary/30',
+            node.status === 'complete' && 'opacity-60'
+          )}
+          onClick={() => hasChildren && toggleNode(node.id)}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (hasChildren && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              toggleNode(node.id);
+            }
+          }}
+        >
+          {/* Chevron for expandable nodes */}
+          {hasChildren ? (
+            <ChevronRight
+              className={cn(
+                'w-4 h-4 transition-transform flex-shrink-0',
+                isExpanded && 'rotate-90'
+              )}
+            />
+          ) : (
+            <div className="w-4" /> // Spacer for alignment
+          )}
+
+          <StatusIcon />
+
+          <span
+            className={cn(
+              'text-sm flex-1 truncate',
+              node.status === 'complete' && 'text-muted-foreground'
+            )}
+          >
+            {node.label}
+          </span>
+
+          {/* Play button for clickable nodes */}
+          {isClickable && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleNodeClick}
+                    disabled={isCommandRunning}
+                    className={cn(
+                      "p-1 rounded hover:bg-muted",
+                      "opacity-0 group-hover:opacity-100 transition-opacity",
+                      isCommandRunning && "opacity-50 cursor-not-allowed"
+                    )}
+                    aria-label={`Execute ${getCommandLabel(command!)}`}
+                  >
+                    <Play className="w-4 h-4 text-primary" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center">
+                  <code className="text-xs">{command}</code>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* Progress for phases */}
+          {node.progress && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">
+                {node.progress.completed}/{node.progress.total}
+              </span>
+              <span className="text-primary font-medium">
+                (
+                {node.progress.total > 0
+                  ? Math.round(
+                      (node.progress.completed / node.progress.total) * 100
+                    )
+                  : 0}
+                %)
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Recursive children with connector lines */}
+        {hasChildren && isExpanded && (
+          <div role="group" className="relative">
+            {/* Vertical connector line */}
+            <div className="absolute left-[11px] top-0 bottom-2 w-px bg-border" />
+
+            {node.children!.map((child) => (
+              <div key={child.id} className="relative">
+                {/* Horizontal connector line */}
+                <div className="absolute left-[11px] top-4 w-4 h-px bg-border" />
+                <GSDTreeNode
+                  node={child}
+                  depth={depth + 1}
+                  currentPhaseNumber={currentPhaseNumber}
+                  projectPath={projectPath}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+GSDTreeNode.displayName = 'GSDTreeNode';

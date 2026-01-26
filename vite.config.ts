@@ -36,6 +36,17 @@ export default defineConfig(async () => ({
       // 3. tell vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    // Proxy API and WebSocket calls to Rust backend
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://localhost:8080',
+        ws: true,
+      },
+    },
   },
 
   // Build configuration for code splitting

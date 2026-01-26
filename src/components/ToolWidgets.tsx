@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { 
-  CheckCircle2, 
-  Circle, 
+import {
+  CheckCircle2,
+  Circle,
   Clock,
   FolderOpen,
   FileText,
@@ -47,6 +47,7 @@ import {
   LayoutList,
   Activity,
   Hash,
+  MessageCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -2995,6 +2996,82 @@ export const TodoReadWidget: React.FC<{ todos?: any[]; result?: any }> = ({ todo
           <StatsView />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+};
+
+/**
+ * Widget for AskUserQuestion tool - displays question/response interaction
+ */
+export const AskUserQuestionWidget: React.FC<{
+  question?: string;
+  result?: any;
+}> = ({ question, result }) => {
+  // Extract response from result if available
+  let response = '';
+  if (result) {
+    if (typeof result.content === 'string') {
+      response = result.content;
+    } else if (result.content && typeof result.content === 'object') {
+      if (result.content.text) {
+        response = result.content.text;
+      } else if (Array.isArray(result.content)) {
+        response = result.content
+          .map((c: any) => (typeof c === 'string' ? c : c.text || JSON.stringify(c)))
+          .join('\n');
+      } else {
+        response = JSON.stringify(result.content, null, 2);
+      }
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20">
+        <MessageCircle className="h-4 w-4 text-violet-500" />
+        <span className="text-sm font-medium text-violet-600 dark:text-violet-400">User Input Requested</span>
+      </div>
+
+      {/* Question */}
+      {question && (
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center gap-1.5 min-w-[80px]">
+              <Bot className="h-3 w-3 text-violet-500" />
+              <span className="text-xs font-medium text-muted-foreground">Question</span>
+            </div>
+            <p className="flex-1 text-sm text-foreground">{question}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Response */}
+      {response && (
+        <div className="rounded-lg border bg-green-500/5 border-green-500/20 p-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center gap-1.5 min-w-[80px]">
+              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <span className="text-xs font-medium text-green-600 dark:text-green-400">Response</span>
+            </div>
+            <p className="flex-1 text-sm text-foreground">{response}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Waiting indicator when no response yet */}
+      {!response && (
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="animate-pulse flex items-center gap-1">
+              <div className="h-1 w-1 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="h-1 w-1 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="h-1 w-1 bg-violet-500 rounded-full animate-bounce"></div>
+            </div>
+            <span>Waiting for user input...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

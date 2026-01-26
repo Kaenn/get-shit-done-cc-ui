@@ -1,16 +1,16 @@
 
 <div align="center">
-  <img src="src-tauri/icons/icon.png" alt="opcode Logo" width="120" height="120">
+  <img src="src-tauri/icons/icon.png" alt="GSD-UI Logo" width="120" height="120">
 
-  <h1>opcode</h1>
-  
+  <h1>GSD-UI</h1>
+
   <p>
     <strong>A powerful GUI app and Toolkit for Claude Code</strong>
   </p>
   <p>
     <strong>Create custom agents, manage interactive Claude Code sessions, run secure background agents, and more.</strong>
   </p>
-  
+
   <p>
     <a href="#features"><img src="https://img.shields.io/badge/Features-✨-blue?style=for-the-badge" alt="Features"></a>
     <a href="#installation"><img src="https://img.shields.io/badge/Install-🚀-green?style=for-the-badge" alt="Installation"></a>
@@ -36,9 +36,9 @@ https://github.com/user-attachments/assets/6bceea0f-60b6-4c3e-a745-b891de00b8d0
 
 ## 🌟 Overview
 
-**opcode** is a powerful desktop application that transforms how you interact with Claude Code. Built with Tauri 2, it provides a beautiful GUI for managing your Claude Code sessions, creating custom agents, tracking usage, and much more.
+**GSD-UI** is a powerful desktop application that transforms how you interact with Claude Code. Built with Tauri 2, it provides a beautiful GUI for managing your Claude Code sessions, creating custom agents, tracking usage, and much more.
 
-Think of opcode as your command center for Claude Code - bridging the gap between the command-line tool and a visual experience that makes AI-assisted development more intuitive and productive.
+Think of GSD-UI as your command center for Claude Code - bridging the gap between the command-line tool and a visual experience that makes AI-assisted development more intuitive and productive.
 
 ## 📋 Table of Contents
 
@@ -46,7 +46,7 @@ Think of opcode as your command center for Claude Code - bridging the gap betwee
 - [✨ Features](#-features)
   - [🗂️ Project & Session Management](#️-project--session-management)
   - [🤖 CC Agents](#-cc-agents)
-  
+
   - [📊 Usage Analytics Dashboard](#-usage-analytics-dashboard)
   - [🔌 MCP Server Management](#-mcp-server-management)
   - [⏰ Timeline & Checkpoints](#-timeline--checkpoints)
@@ -110,9 +110,9 @@ Think of opcode as your command center for Claude Code - bridging the gap betwee
 
 ### Getting Started
 
-1. **Launch opcode**: Open the application after installation
+1. **Launch GSD-UI**: Open the application after installation
 2. **Welcome Screen**: Choose between CC Agents or Projects
-3. **First Time Setup**: opcode will automatically detect your `~/.claude` directory
+3. **First Time Setup**: GSD-UI will automatically detect your `~/.claude` directory
 
 ### Managing Projects
 
@@ -167,7 +167,7 @@ Menu → MCP Manager → Add Server → Configure
 
 ### Prerequisites
 
-Before building opcode from source, ensure you have the following installed:
+Before building GSD-UI from source, ensure you have the following installed:
 
 #### System Requirements
 
@@ -240,8 +240,8 @@ brew install pkg-config
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/getAsterisk/opcode.git
-   cd opcode
+   git clone https://github.com/glenninn/gsd-ui.git
+   cd gsd-ui
    ```
 
 2. **Install Frontend Dependencies**
@@ -250,17 +250,17 @@ brew install pkg-config
    ```
 
 3. **Build the Application**
-   
+
    **For Development (with hot reload)**
    ```bash
    bun run tauri dev
    ```
-   
+
    **For Production Build**
    ```bash
    # Build the application
    bun run tauri build
-   
+
    # The built executable will be in:
    # - Linux: src-tauri/target/release/
    # - macOS: src-tauri/target/release/
@@ -268,12 +268,12 @@ brew install pkg-config
    ```
 
 4. **Platform-Specific Build Options**
-   
+
    **Debug Build (faster compilation, larger binary)**
    ```bash
    bun run tauri build --debug
    ```
-   
+
    **Universal Binary for macOS (Intel + Apple Silicon)**
    ```bash
    bun run tauri build --target universal-apple-darwin
@@ -310,17 +310,17 @@ After building, you can verify the application works:
 ```bash
 # Run the built executable directly
 # Linux/macOS
-./src-tauri/target/release/opcode
+./src-tauri/target/release/gsd-ui
 
 # Windows
-./src-tauri/target/release/opcode.exe
+./src-tauri/target/release/gsd-ui.exe
 ```
 
 ### Build Artifacts
 
 The build process creates several artifacts:
 
-- **Executable**: The main opcode application
+- **Executable**: The main GSD-UI application
 - **Installers** (when using `tauri build`):
   - `.deb` package (Linux)
   - `.AppImage` (Linux)
@@ -343,7 +343,7 @@ All artifacts are located in `src-tauri/target/release/`.
 ### Project Structure
 
 ```
-opcode/
+gsd-ui/
 ├── src/                   # React frontend
 │   ├── components/        # UI components
 │   ├── lib/               # API client & utilities
@@ -378,7 +378,7 @@ cd src-tauri && cargo fmt
 
 ## 🔒 Security
 
-opcode prioritizes your privacy and security:
+GSD-UI prioritizes your privacy and security:
 
 1. **Process Isolation**: Agents run in separate processes
 2. **Permission Control**: Configure file and network access per agent
@@ -405,6 +405,7 @@ This project is licensed under the AGPL License - see the [LICENSE](LICENSE) fil
 
 ## 🙏 Acknowledgments
 
+- Built on [OPCode](https://github.com/winfunc/opcode) by Asterisk - the original Claude Code GUI toolkit
 - Built with [Tauri](https://tauri.app/) - The secure framework for building desktop apps
 - [Claude](https://claude.ai) by Anthropic
 
@@ -415,13 +416,8 @@ This project is licensed under the AGPL License - see the [LICENSE](LICENSE) fil
     <strong>Made with ❤️ by the <a href="https://asterisk.so/">Asterisk</a></strong>
   </p>
   <p>
-    <a href="https://github.com/getAsterisk/opcode/issues">Report Bug</a>
+    <a href="https://github.com/glenninn/gsd-ui/issues">Report Bug</a>
     ·
-    <a href="https://github.com/getAsterisk/opcode/issues">Request Feature</a>
+    <a href="https://github.com/glenninn/gsd-ui/issues">Request Feature</a>
   </p>
 </div>
-
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=getAsterisk/opcode&type=Date)](https://www.star-history.com/#getAsterisk/opcode&Date)

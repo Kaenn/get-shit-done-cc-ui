@@ -13,6 +13,8 @@ export interface Tab {
   claudeFileId?: string; // for claude-file tabs
   initialProjectPath?: string; // for chat tabs
   projectPath?: string; // for agent-execution tabs
+  /** Initial command to execute when tab opens (auto-submitted) */
+  initialCommand?: string;
   status: 'active' | 'idle' | 'running' | 'complete' | 'error';
   hasUnsavedChanges: boolean;
   order: number;

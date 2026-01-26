@@ -145,7 +145,7 @@
 
 .rotating-symbol {
   display: inline-block;
-  color: #8B5CF6;
+  color: oklch(0.70 0.15 200);
   font-size: 1.5rem; /* Make it bigger! */
   margin-right: 0.5rem;
   font-weight: bold;
