@@ -1,306 +1,483 @@
-# Pitfalls Research
+# Pitfalls Research: v1.1 UI Enhancements
 
-**Domain:** Plugin-based UI systems for terminal/desktop applications
-**Researched:** 2026-01-24
-**Confidence:** HIGH
+**Domain:** Adding UI visualization features to existing React/Tauri/Zustand/Radix app
+**Researched:** 2026-01-25
+**Confidence:** HIGH (verified against codebase patterns + authoritative sources)
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Core-Plugin Tight Coupling Through Direct Imports
+These mistakes cause rewrites, broken UX, or security vulnerabilities.
 
-**What goes wrong:**
-Core code imports plugin-specific types, components, or logic, creating hard dependencies that prevent adding/removing plugins without modifying core. Teams often start with "just this one plugin" and accidentally bake plugin-specific logic into the core.
+### 1. Radix Portal Z-Index Collision with New Activity Bar
 
-**Why it happens:**
-- Convenience: Directly importing plugin components is faster than designing abstractions
-- Lack of clear boundaries: No enforced separation between core and plugin namespaces
-- Requirements pressure: Feature deadlines push developers to take shortcuts
-- Plugin-first thinking: Designing for the first plugin (GSD) rather than generic extensibility
+**Risk:** Adding an icon sidebar (activity bar) creates a new stacking context that conflicts with existing Radix portals (Dialog, Popover, DropdownMenu). Tooltips, dropdowns, and dialogs render behind the sidebar or in wrong positions.
 
-**How to avoid:**
-- **Zero imports rule**: Core code can NEVER import from `/plugins/` directory
-- **Configuration-driven**: Plugins register through config objects, not code imports
-- **Interface contracts**: Define strict TypeScript interfaces that plugins must implement
-- **Compile-time enforcement**: Use ESLint rules to block core → plugin imports
-- **Example anti-pattern**: `import { GSDPanel } from '@/plugins/gsd/components'` in core
-- **Example correct pattern**: Plugin registers `{ type: 'panel', component: GSDPanel }` via API
+**Why This Matters for GSD-UI:** The codebase already uses `@radix-ui/react-popover`, `@radix-ui/react-dropdown-menu`, `@radix-ui/react-dialog`, and `@radix-ui/react-tooltip`. The current `CustomTitlebar.tsx` and `TabManager.tsx` create overlapping z-index contexts. Adding a fixed sidebar will compete with these.
 
-**Warning signs:**
-- Import statements from core files pointing to `/plugins/*` directory
-- TypeScript errors when trying to remove a plugin directory
-- Core components with plugin-specific props (e.g., `gsdData?: GSDData`)
-- Conditional rendering based on plugin names: `{plugin === 'gsd' && <GSDSpecificUI />}`
-- Build breaks when plugin directory is removed
+**Warning Signs:**
+- Dropdowns or tooltips appear behind the activity bar
+- Dialog overlays don't cover the sidebar
+- Click events don't reach elements visually on top
+- Console shows no errors, but UI layering is wrong
 
-**Phase to address:**
-Phase 1 (Foundation) — Establish plugin registration system and interface contracts before implementing first plugin
+**Prevention:**
+1. Use Radix's new `Portal` part (not the legacy radix-portal) which doesn't set automatic z-index
+2. Establish a z-index scale and document it:
+   ```typescript
+   // z-index.ts
+   export const Z_INDEX = {
+     activityBar: 10,
+     mainContent: 1,
+     dropdown: 50,
+     dialog: 100,
+     toast: 150,
+   } as const;
+   ```
+3. Apply z-index to the Portal container, not the content
+4. Test every existing Radix component (tooltip, dropdown, dialog) with sidebar visible
 
----
+**Phase:** Activity Bar implementation (Phase 1)
 
-### Pitfall 2: Data Source Abstraction Leakage
-
-**What goes wrong:**
-Core features expose filesystem-specific APIs (file paths, fs.readFile), making it impossible for plugins with database/API data sources to integrate. The tree view component expects file system paths, the status indicator looks for file timestamps, etc.
-
-**Why it happens:**
-- First plugin uses files: GSD reads `.planning/` directory, so core is designed around file operations
-- Concrete thinking: Designing for current use case (files) rather than abstraction (data sources)
-- Performance shortcuts: Direct filesystem access seems faster than abstraction layer
-- Testing convenience: Mocking files is easier than designing abstract data providers
-
-**How to avoid:**
-- **Provider pattern**: Define `DataSourceProvider` interface with methods like `getItems()`, `getStatus()`
-- **No path assumptions**: Core never manipulates file paths or calls filesystem APIs directly
-- **Adapter layer**: Each plugin provides its own data source adapter (FileSystemDataSource, SQLiteDataSource, etc.)
-- **Example leaky API**: `loadPlan(filePath: string)` — assumes filesystem
-- **Example clean API**: `loadPlan(planId: string)` — source-agnostic, plugin resolves ID to data
-
-**Warning signs:**
-- Core components with parameters like `filePath`, `directory`, `fsStats`
-- Direct imports of Node.js `fs` module in core code
-- Error messages containing filesystem-specific language: "File not found"
-- Helper utilities with names like `readPlanFile()`, `scanDirectory()`
-- Plugin adapter forced to fake filesystem behavior for database-backed data
-
-**Phase to address:**
-Phase 1 (Foundation) — Design data source abstraction before building tree view and status features
+**Sources:**
+- [Radix Primitives z-index issues #1317](https://github.com/radix-ui/primitives/issues/1317)
+- [Radix portal layering control #760](https://github.com/radix-ui/primitives/issues/760)
 
 ---
 
-### Pitfall 3: Versioning and Breaking Changes Without Migration Strategy
+### 2. Zustand Store Subscription Memory Leak in Tab System
 
-**What goes wrong:**
-Core introduces breaking changes to plugin API (renamed interfaces, changed method signatures), breaking all existing plugins. No versioning system means plugins can't declare compatibility, and no migration tooling exists to upgrade plugin configs.
+**Risk:** Tabs that subscribe to Zustand stores (sessionStore, gsdStore) don't unsubscribe on unmount, causing memory leaks and stale state updates to unmounted components.
 
-**Why it happens:**
-- MVP mindset: "We only have one plugin, versioning seems like overkill"
-- Rapid iteration: Core API evolves quickly during early development
-- Lack of stability commitment: No clear "stable vs experimental" API distinction
-- Missing changelog: Breaking changes not documented for plugin developers
+**Why This Matters for GSD-UI:** The existing `TabContext.tsx` manages tab lifecycle. When adding a tabbed file viewer that displays session data from `sessionStore.ts`, each tab will subscribe to store slices. The current code uses `subscribeWithSelector` middleware but doesn't show cleanup patterns in components.
 
-**How to avoid:**
-- **Semantic versioning**: Core plugin API follows semver (e.g., `pluginApiVersion: "1.0.0"`)
-- **Compatibility matrix**: Plugins declare required API version in manifest
-- **Deprecation period**: Mark old APIs as deprecated for 2+ releases before removal
-- **Migration guides**: Document every breaking change with migration code examples
-- **Adapter pattern**: Provide compatibility adapters for 1-2 previous major versions
-- **Example**: Core v2 includes adapter that translates old v1 plugin interface calls
+**Warning Signs:**
+- Memory grows steadily when opening/closing tabs
+- Console warnings: "Can't perform state update on unmounted component"
+- Stale data appears briefly when switching tabs
+- Chrome DevTools Heap Snapshot shows detached DOM nodes
 
-**Warning signs:**
-- Plugin manifest has no `apiVersion` field
-- Core makes interface changes without incrementing version
-- No BREAKING CHANGES section in commit messages
-- Plugin developers discover breaks at runtime, not compile time
-- Multiple plugins break when core updates
+**Prevention:**
+1. Always use selectors to subscribe to minimal state:
+   ```typescript
+   // GOOD: Subscribe to specific slice
+   const sessions = useSessionStore((state) => state.sessions[projectId]);
 
-**Phase to address:**
-Phase 1 (Foundation) — Establish versioning from day one, before second plugin is added
+   // BAD: Subscribe to entire store
+   const store = useSessionStore();
+   ```
+2. For manual subscriptions, always unsubscribe:
+   ```typescript
+   useEffect(() => {
+     const unsubscribe = useSessionStore.subscribe(
+       (state) => state.currentSession,
+       (session) => { /* handle */ }
+     );
+     return () => unsubscribe(); // CRITICAL
+   }, []);
+   ```
+3. Use `destroy()` method when completely removing stores in tests
 
----
+**Phase:** Tabbed File Viewer (Phase 3)
 
-### Pitfall 4: Command Execution Without Validation or Sandboxing
-
-**What goes wrong:**
-Plugins define commands that execute arbitrary terminal input without validation, allowing command injection or system compromise. A malicious plugin config could inject `; rm -rf /` into a command. Combo actions chain commands without checking intermediate results, causing cascading failures.
-
-**Why it happens:**
-- Trust assumption: Assuming plugin authors are trustworthy
-- Convenience over security: String interpolation is easier than structured commands
-- No threat model: Failing to consider malicious or compromised plugins
-- Combo complexity: Chaining commands without error handling between steps
-
-**How to avoid:**
-- **Structured commands**: Use objects `{ command: '/gsd:plan-phase', args: { phase: 1 } }` not strings
-- **Allowlist validation**: Core maintains allowlist of permitted command prefixes
-- **Parameter sanitization**: Escape/validate all user-provided parameters
-- **Combo rollback**: Implement transaction-like behavior for command chains
-- **Permission system**: Plugins declare required permissions (filesystem, network, execute)
-- **Example vulnerable**: `executeCommand(\`/gsd:plan-phase ${userInput}\`)`
-- **Example secure**: `executeCommand({ cmd: '/gsd:plan-phase', args: sanitize(userInput) })`
-
-**Warning signs:**
-- Command execution uses template literals with unsanitized input
-- No validation before passing commands to terminal
-- Combo actions don't check success/failure between steps
-- Plugin config contains raw shell commands instead of structured data
-- No audit log of executed commands
-
-**Phase to address:**
-Phase 2 (Commands) — Design command validation system before implementing combo actions
+**Sources:**
+- [Zustand memory leak discussion #2054](https://github.com/pmndrs/zustand/discussions/2054)
+- [Zustand store cleanup best practices](https://www.projectrules.ai/rules/zustand)
 
 ---
 
-### Pitfall 5: Plugin Isolation Failures Leading to Cross-Plugin Interference
+### 3. XSS Vulnerability in Markdown Rendering with Frontmatter
 
-**What goes wrong:**
-Plugin A's state updates accidentally trigger re-renders in Plugin B. Plugins share global state or event listeners, causing bugs where disabling one plugin breaks another. Memory leaks occur when plugins don't clean up listeners on unmount.
+**Risk:** Rendering user-provided markdown (session outputs, CLAUDE.md files) without sanitization allows XSS attacks through embedded HTML or malicious frontmatter.
 
-**Why it happens:**
-- Shared Zustand stores: All plugins write to same global store
-- Event bus without namespacing: Plugins listen to generic events like `data-updated`
-- React context pollution: Plugin contexts accessible to other plugins
-- Missing cleanup: Plugins register listeners but don't unregister on disable
+**Why This Matters for GSD-UI:** The app already uses `react-markdown` and `@uiw/react-md-editor` in `MarkdownEditor.tsx`. Session outputs may contain untrusted content. If adding frontmatter parsing, YAML injection becomes a vector.
 
-**How to avoid:**
-- **Scoped stores**: Each plugin gets isolated Zustand store slice
-- **Namespaced events**: Events prefixed with plugin ID: `gsd:milestone-updated`
-- **Context isolation**: Plugin contexts wrapped in plugin-specific providers
-- **Lifecycle hooks**: Core calls `onEnable()` and `onDisable()` for cleanup
-- **Example interference**: Plugin GSD updates `store.data`, Plugin SQLite re-renders unnecessarily
-- **Example isolated**: Plugin GSD updates `store.plugins.gsd.data`, isolated from others
+**Warning Signs:**
+- Using `rehype-raw` without `rehype-sanitize`
+- Rendering markdown from external sources (session files) without validation
+- Frontmatter parser executes code or allows arbitrary keys
+- `dangerouslySetInnerHTML` appears anywhere near markdown content
 
-**Warning signs:**
-- Console warnings about memory leaks when toggling plugins on/off
-- Plugin B breaks when Plugin A is disabled
-- Performance degrades with each new plugin added
-- Event listener count grows indefinitely in React DevTools
-- Global state contains plugin-specific data without namespacing
+**Prevention:**
+1. Never enable `rehype-raw` without `rehype-sanitize`:
+   ```typescript
+   import rehypeRaw from 'rehype-raw';
+   import rehypeSanitize from 'rehype-sanitize';
 
-**Phase to address:**
-Phase 1 (Foundation) — Design plugin isolation strategy before multiple plugins exist
+   <ReactMarkdown
+     rehypePlugins={[rehypeRaw, rehypeSanitize]} // ORDER MATTERS
+   >
+   ```
+2. Use `gray-matter` for frontmatter with strict YAML parsing (no code execution)
+3. Implement Content Security Policy as defense in depth
+4. Restrict allowed HTML elements with `allowedElements` prop
+5. Filter URLs with `urlTransform` to block `javascript:` protocol
+
+**Phase:** Markdown Rendering (Phase 2)
+
+**Sources:**
+- [React Markdown Security Guide 2025](https://strapi.io/blog/react-markdown-complete-guide-security-styling)
+- [Secure Markdown in React - HackerOne](https://www.hackerone.com/blog/secure-markdown-rendering-react-balancing-flexibility-and-safety)
+- [Stored XSS pitfall in markdown editors](https://medium.com/@brian3814/pitfall-of-potential-xss-in-markdown-editors-1d9e0d2df93a)
 
 ---
 
-## Technical Debt Patterns
+### 4. AnimatePresence Memory Leak with Rapid Tab Switching
 
-Shortcuts that seem reasonable but create long-term problems.
+**Risk:** Framer Motion's `AnimatePresence` doesn't properly unmount children when state changes rapidly (fast tab switching), causing stuck animations and memory leaks.
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Hardcoding first plugin name in core | Fast MVP implementation | Can't add second plugin without refactoring core | Never - use plugin registry from start |
-| Skipping data source abstraction | Simpler code for file-based plugin | Impossible to support DB/API plugins later | Never - abstraction is core requirement |
-| Plugin config as plain JSON | Easy to read/write manually | No schema validation, runtime errors | Only during Phase 1 prototyping, must migrate to typed schema |
-| Shared global Zustand store | Less boilerplate, faster initial dev | Plugins interfere with each other | Never - isolation is critical |
-| Command strings instead of objects | Simpler to implement combo chains | Command injection vulnerability | Never - security is non-negotiable |
-| No plugin versioning | Less initial complexity | Breaking changes break all plugins | Only with single internal plugin, not for ecosystem |
-| Direct filesystem access in tree view | Works fine for GSD plugin | Blocks non-file data sources | Never - breaks core architecture principle |
+**Why This Matters for GSD-UI:** The existing `TabManager.tsx` uses `AnimatePresence` and `motion` from `framer-motion`. The `SessionList.tsx` wraps cards in `AnimatePresence mode="popLayout"`. Rapid tab switching will trigger this bug.
 
-## Integration Gotchas
+**Warning Signs:**
+- Exit animations don't play or get stuck mid-animation
+- Old tab content remains visible after switching
+- Memory grows when rapidly cycling through tabs
+- Console shows React state updates on unmounted components
 
-Common mistakes when connecting core to plugins.
+**Prevention:**
+1. Never wrap animated children in React Fragments inside AnimatePresence:
+   ```typescript
+   // BAD
+   <AnimatePresence>
+     <>
+       <motion.div key="a">...</motion.div>
+       <motion.div key="b">...</motion.div>
+     </>
+   </AnimatePresence>
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Plugin registration | Manually importing and registering plugins in core code | Auto-discovery via config files or registry pattern |
-| React component injection | Core imports plugin JSX components directly | Plugin provides component via registration API, core renders generic slot |
-| Event handling | Plugins listen to core events without cleanup | Core provides `subscribe()` / `unsubscribe()` API with automatic cleanup |
-| Styling | Plugins add global CSS that affects core UI | Plugins use CSS modules or scoped Tailwind classes only |
-| State updates | Plugins mutate core state directly | Core provides actions API, plugins dispatch actions |
-| Data fetching | Core fetches data and passes to plugins | Plugins fetch own data via data source abstraction |
-| Configuration | Plugin config mixed with core settings | Plugin config isolated in `plugins/{name}/config.json` |
+   // GOOD
+   <AnimatePresence>
+     <motion.div key="a">...</motion.div>
+     <motion.div key="b">...</motion.div>
+   </AnimatePresence>
+   ```
+2. Ensure AnimatePresence is NOT conditionally rendered:
+   ```typescript
+   // BAD: AnimatePresence unmounts before exit animation
+   {isVisible && <AnimatePresence><Child /></AnimatePresence>}
 
-## Performance Traps
+   // GOOD: Keep AnimatePresence mounted
+   <AnimatePresence>{isVisible && <Child />}</AnimatePresence>
+   ```
+3. Avoid `layoutId` conflicts when multiple tabs have same-named elements
+4. Add `key` props to all animated children (already done in existing code)
+5. Consider debouncing rapid tab switches (100-200ms)
 
-Patterns that work at small scale but fail as usage grows.
+**Phase:** All phases with animation (especially Tab System, Phase 3)
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Loading all plugin data on app start | Slow startup time with multiple plugins | Lazy load plugin data when panel is opened | >3 plugins with large datasets |
-| Re-rendering all plugins on any state change | UI lag when interacting with any plugin | Scoped state, React.memo, Zustand selectors | >5 active plugins simultaneously |
-| Synchronous combo execution | UI freezes during command chains | Async command queue with progress indicator | >3 commands in combo sequence |
-| No virtual scrolling in tree view | Slow rendering with large file trees | Implement virtual scrolling from start | >1000 items in tree |
-| Full re-parse of data files on every refresh | Excessive disk I/O and CPU usage | Implement file watching with incremental updates | Files >10MB or >1000 items |
-| In-memory caching of all plugin data | Memory usage grows unbounded | LRU cache with size limits | Total data >500MB across plugins |
+**Sources:**
+- [AnimatePresence memory leak #625](https://github.com/framer/motion/issues/625)
+- [AnimatePresence fast state changes #2554](https://github.com/framer/motion/issues/2554)
+- [Understanding AnimatePresence bugs](https://medium.com/javascript-decoded-in-plain-english/understanding-animatepresence-in-framer-motion-attributes-usage-and-a-common-bug-914538b9f1d3)
 
-## Security Mistakes
+---
 
-Domain-specific security issues beyond general web security.
+## Medium Pitfalls
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Plugin config from untrusted source | Malicious plugin executes arbitrary commands | Validate plugin manifests against schema, require user approval for new plugins |
-| Command string interpolation | Command injection (e.g., `; rm -rf /`) | Use structured command objects with parameter validation |
-| Unrestricted file access | Plugin reads sensitive files outside project | Sandbox plugin file access to project directory only |
-| No audit log | Can't trace malicious plugin behavior | Log all command executions and file access by plugin |
-| Shared localStorage across plugins | Plugin A reads Plugin B's sensitive data | Namespace localStorage keys by plugin ID |
-| Loading plugins from arbitrary URLs | Remote code execution vulnerability | Only load plugins from approved directory/registry |
-| Plugin-to-plugin communication | Plugin A compromises Plugin B | Prohibit direct plugin-to-plugin calls, all communication through core API |
+These mistakes cause delays, technical debt, or degraded UX.
 
-## UX Pitfalls
+### 5. Layout Thrashing When Adding Fixed Sidebar
 
-Common user experience mistakes in this domain.
+**Risk:** Adding a fixed-position activity bar causes main content to recalculate layout on every resize/toggle, causing visible jank and paint thrashing.
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| No feedback when plugin disabled | Confusion when panel disappears | Show toast notification: "GSD plugin disabled" |
-| Combo actions without progress indicator | User thinks app is frozen during long chains | Show progress: "Step 2/5: Planning phase..." |
-| Plugin errors crash entire UI | Loses all work when plugin has bug | Error boundary per plugin, core UI stays functional |
-| No way to recover from failed combo | Stuck in broken state, must restart app | Allow retry of individual steps in combo |
-| Command execution without confirmation | Accidentally triggers destructive operations | Require confirmation for commands marked `requiresConfirm: true` |
-| Plugin settings buried in global settings | Users don't discover plugin features | Per-plugin settings accessible from plugin panel |
-| No indication which commands available | Users don't know what to type | Show autocomplete with available commands from active plugins |
+**Why This Matters for GSD-UI:** The current `App.tsx` uses flexbox with `flex-1 overflow-hidden` for content areas. Adding a sidebar that toggles width will trigger expensive reflows.
 
-## "Looks Done But Isn't" Checklist
+**Warning Signs:**
+- Visible jank when toggling sidebar
+- High "Layout" times in Chrome Performance tab
+- Content shifts unexpectedly during animations
+- Scroll position resets when sidebar toggles
 
-Things that appear complete but are missing critical pieces.
+**Prevention:**
+1. Use CSS transforms instead of width changes for toggle:
+   ```css
+   .sidebar { transform: translateX(-100%); } /* collapsed */
+   .sidebar.open { transform: translateX(0); }
+   ```
+2. Use `will-change: transform` on sidebar
+3. Keep main content width calculation in CSS, not JS
+4. Use CSS Grid for the main layout (more stable than flexbox for this):
+   ```css
+   .layout {
+     display: grid;
+     grid-template-columns: auto 1fr; /* sidebar + content */
+   }
+   ```
+5. Debounce resize handlers
 
-- [ ] **Plugin system:** Often missing cleanup on disable — verify listeners are unregistered when plugin toggled off
-- [ ] **Tree view:** Often missing keyboard navigation — verify arrow keys, enter, expand/collapse work
-- [ ] **Status indicators:** Often missing real-time updates — verify status changes when underlying data changes
-- [ ] **Combo actions:** Often missing partial failure handling — verify rollback when step 3 of 5 fails
-- [ ] **Command execution:** Often missing validation — verify parameters are sanitized before execution
-- [ ] **Data source abstraction:** Often missing error handling — verify graceful degradation when data source unavailable
-- [ ] **Plugin configuration:** Often missing schema validation — verify invalid config shows helpful error message
-- [ ] **Panel layouts:** Often missing resize persistence — verify panel widths saved across sessions
+**Phase:** Activity Bar implementation (Phase 1)
 
-## Recovery Strategies
+---
 
-When pitfalls occur despite prevention, how to recover.
+### 6. Stale Closures in Dynamic Form Callbacks
 
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Core-plugin tight coupling | HIGH | 1. Identify all imports from core to plugins, 2. Design interface abstraction, 3. Refactor all coupled code, 4. Add lint rule to prevent regression — Requires major refactor affecting both core and all plugins |
-| Data source leakage | HIGH | 1. Define DataSourceProvider interface, 2. Refactor core to use abstraction, 3. Create filesystem adapter for existing plugin, 4. Test that DB adapter could work — Major refactor but isolated to data layer |
-| No versioning strategy | MEDIUM | 1. Add apiVersion to plugin manifests, 2. Implement compatibility check at load time, 3. Document current version as 1.0.0, 4. Commit to semver going forward — Low code impact but requires process change |
-| Command injection vulnerability | LOW | 1. Replace string commands with objects, 2. Add validation layer, 3. Audit existing plugin commands, 4. Add security tests — Straightforward refactor with clear path |
-| Plugin isolation failures | MEDIUM | 1. Scope Zustand stores by plugin, 2. Namespace event listeners, 3. Add cleanup hooks, 4. Test enable/disable cycles — Moderate refactor affecting state management |
-| Performance issues (no virtual scroll) | LOW | 1. Add @tanstack/react-virtual dependency, 2. Wrap tree view with useVirtualizer, 3. Benchmark before/after — Well-understood solution with library support |
+**Risk:** Form validation callbacks capture stale state when form schema changes dynamically based on user selection (e.g., different command forms require different validation).
 
-## Pitfall-to-Phase Mapping
+**Why This Matters for GSD-UI:** Adding dynamic command forms with `react-hook-form` and `zod` (both already in dependencies) where validation rules change based on selected command type.
 
-How roadmap phases should address these pitfalls.
+**Warning Signs:**
+- Validation errors reference old field values
+- Form submits with outdated data
+- Async validation runs on fields that were removed
+- ESLint `react-hooks/exhaustive-deps` warnings ignored
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Core-plugin tight coupling | Phase 1: Foundation | Verify ESLint blocks imports from `/plugins/` in `/core/` |
-| Data source abstraction leakage | Phase 1: Foundation | Verify mock DB adapter can power tree view without filesystem |
-| No versioning strategy | Phase 1: Foundation | Verify plugin manifest has `apiVersion`, core checks compatibility |
-| Command injection | Phase 2: Commands | Verify commands use structured objects, parameters are validated |
-| Plugin isolation failures | Phase 1: Foundation | Verify disabling Plugin A doesn't affect Plugin B's functionality |
-| Missing error boundaries | Phase 1: Foundation | Verify plugin crash doesn't take down core UI |
-| Combo actions without rollback | Phase 3: Combos | Verify failed combo allows retry or rollback to previous state |
-| Performance (no virtual scroll) | Phase 4: UI Polish | Verify tree with 10k items renders smoothly |
-| Security audit missing | Phase 5: Security Review | Verify plugin permissions documented, audit log implemented |
+**Prevention:**
+1. Use functional updates for state that validation depends on:
+   ```typescript
+   const onValidate = useCallback((data) => {
+     // Use ref or functional update to get latest state
+     return latestSchemaRef.current.parse(data);
+   }, []); // Empty deps is intentional with ref
+   ```
+2. Reset form when schema changes:
+   ```typescript
+   useEffect(() => {
+     reset(getDefaultValues(commandType));
+   }, [commandType, reset]);
+   ```
+3. Separate Zod schemas per command type (discriminated union)
+4. Use `mode: "onChange"` carefully with async validation (causes per-keystroke requests)
+5. Debounce async validation with `awesome-debounce-promise` (lodash.debounce breaks promises)
+
+**Phase:** Dynamic Command Forms (Phase 2)
+
+**Sources:**
+- [Async Form Validation with Zod & React Hook Form](https://blog.benorloff.co/async-form-validation-with-zod-react-hook-form)
+- [React Hook Form async validation patterns #9005](https://github.com/orgs/react-hook-form/discussions/9005)
+- [Stale closures in React](https://www.dhiwise.com/post/react-stale-closure-common-problems-and-easy-solutions)
+
+---
+
+### 7. Tree View Type Confusion with Heterogeneous Data
+
+**Risk:** Mixing different data types in the same tree (current milestone items + archived items) without proper TypeScript discrimination leads to runtime errors when accessing type-specific properties.
+
+**Why This Matters for GSD-UI:** The existing `FilePicker.tsx` handles only `FileEntry` type. Adding a tree that shows both current milestone files AND archived sessions requires handling different node types.
+
+**Warning Signs:**
+- TypeScript errors suppressed with `as any`
+- Runtime "undefined is not a function" on type-specific methods
+- Inconsistent node rendering (some nodes missing icons/actions)
+- Optional properties accessed without null checks
+
+**Prevention:**
+1. Use discriminated unions with a `type` or `kind` discriminant:
+   ```typescript
+   type TreeNode =
+     | { kind: 'milestone'; data: MilestoneItem; children: TreeNode[] }
+     | { kind: 'archive'; data: ArchivedSession; children: TreeNode[] }
+     | { kind: 'file'; data: FileEntry };
+
+   function renderNode(node: TreeNode) {
+     switch (node.kind) {
+       case 'milestone': return <MilestoneNode {...node.data} />;
+       case 'archive': return <ArchiveNode {...node.data} />;
+       case 'file': return <FileNode {...node.data} />;
+     }
+   }
+   ```
+2. Never destructure before narrowing:
+   ```typescript
+   // BAD
+   const { data } = node; // data type is unknown
+
+   // GOOD
+   if (node.kind === 'file') {
+     const { data } = node; // data is FileEntry
+   }
+   ```
+3. Use exhaustive switch checks with `never` type
+4. Normalize data at fetch time, not render time
+
+**Phase:** Tree View Enhancement (Phase 4)
+
+**Sources:**
+- [TypeScript Discriminated Unions for React](https://medium.com/@uramanovich/typescript-discriminated-unions-for-robust-react-components-58bc06f37299)
+- [Discriminated unions best practices](https://www.totaltypescript.com/discriminated-unions-are-a-devs-best-friend)
+
+---
+
+### 8. react-markdown Performance with Large Session Outputs
+
+**Risk:** Rendering large markdown files (session outputs can be 1000+ lines) causes UI freeze during parsing, blocking animations and user input.
+
+**Why This Matters for GSD-UI:** Session outputs displayed in `SessionOutputViewer.tsx` can be very large. The current `MarkdownEditor.tsx` uses `@uiw/react-md-editor` which has similar concerns.
+
+**Warning Signs:**
+- UI freezes for 1-3 seconds when opening large files
+- Animations stutter during markdown render
+- Chrome DevTools shows long "Scripting" tasks (>100ms)
+- `react-markdown` parse happens on main thread
+
+**Prevention:**
+1. Virtualize long markdown content with `react-window`:
+   ```typescript
+   // Split markdown into blocks, render only visible
+   const blocks = markdown.split('\n\n');
+   <VariableSizeList
+     height={400}
+     itemCount={blocks.length}
+     itemSize={getBlockHeight}
+   >
+     {({ index, style }) => (
+       <div style={style}>
+         <ReactMarkdown>{blocks[index]}</ReactMarkdown>
+       </div>
+     )}
+   </VariableSizeList>
+   ```
+2. Memoize parsed markdown:
+   ```typescript
+   const memoizedContent = useMemo(
+     () => <ReactMarkdown>{content}</ReactMarkdown>,
+     [content]
+   );
+   ```
+3. Show loading state during parse (don't block UI)
+4. Consider pre-rendering to HTML on backend for very large files
+5. Truncate preview with "Show more" expansion
+
+**Phase:** Markdown Rendering / Session Viewer (Phase 2, 3)
+
+**Sources:**
+- [react-markdown virtualization discussion #1027](https://github.com/orgs/remarkjs/discussions/1027)
+- [react-markdown performance #459](https://github.com/remarkjs/react-markdown/issues/459)
+
+---
+
+## Low Pitfalls
+
+These mistakes cause annoyance but are fixable.
+
+### 9. Event Listener Cleanup in FilePicker Keyboard Navigation
+
+**Risk:** Adding keyboard navigation to tree view without proper cleanup causes duplicate handlers and memory leaks.
+
+**Why This Matters for GSD-UI:** The existing `FilePicker.tsx` already has keyboard event handling in a useEffect (lines 186-237). Extending this pattern to a new tree view requires careful cleanup.
+
+**Warning Signs:**
+- Keyboard shortcuts fire multiple times
+- After navigating away and back, key handling is broken
+- Memory gradually increases with repeated mounts
+
+**Prevention:**
+1. Always return cleanup function:
+   ```typescript
+   useEffect(() => {
+     const handler = (e: KeyboardEvent) => { /* ... */ };
+     window.addEventListener('keydown', handler);
+     return () => window.removeEventListener('keydown', handler);
+   }, [dependencies]);
+   ```
+2. Use `useCallback` for handler to maintain reference stability
+3. Consider `useEventListener` hook to encapsulate pattern
+
+**Phase:** Tree View Enhancement (Phase 4)
+
+---
+
+### 10. Tab State Desync with External Updates
+
+**Risk:** Tab state in `TabContext.tsx` can desync from actual session state when sessions are updated externally (e.g., Tauri file watcher, SSE updates).
+
+**Why This Matters for GSD-UI:** The `TabContext.tsx` stores `sessionData` in tab objects. The `sessionStore.ts` has `handleSessionUpdate` for real-time updates. These two sources of truth can diverge.
+
+**Warning Signs:**
+- Tab title shows old session name after rename
+- "Unsaved changes" indicator appears incorrectly
+- Session data in tab differs from store data
+
+**Prevention:**
+1. Single source of truth - store session ID in tab, fetch data from store:
+   ```typescript
+   // Tab stores only sessionId, not sessionData
+   const session = useSessionStore(
+     (state) => state.sessions[tab.sessionId]
+   );
+   ```
+2. Or, subscribe to store changes and update tab:
+   ```typescript
+   useEffect(() => {
+     const unsub = useSessionStore.subscribe(
+       (state) => state.sessions[sessionId],
+       (session) => updateTab(tabId, { sessionData: session })
+     );
+     return unsub;
+   }, [sessionId]);
+   ```
+3. Use optimistic updates with rollback on failure
+
+**Phase:** Tabbed File Viewer (Phase 3)
+
+---
+
+### 11. Tailwind Dynamic Class Name Compilation Failure
+
+**Risk:** Tailwind's JIT compiler doesn't compile class names constructed dynamically at runtime.
+
+**Why This Matters for GSD-UI:** When building dynamic forms with conditional styling based on validation state or command type.
+
+**Warning Signs:**
+- Styles work in development but fail in production
+- Conditional classes like `text-${color}-500` don't apply
+- No error messages, just missing styles
+
+**Prevention:**
+1. Use complete class names, not interpolation:
+   ```typescript
+   // BAD
+   className={`text-${isError ? 'red' : 'green'}-500`}
+
+   // GOOD
+   className={isError ? 'text-red-500' : 'text-green-500'}
+   ```
+2. Use CVA (class-variance-authority) - already in dependencies
+3. Safelist dynamic classes in tailwind.config if needed
+
+**Phase:** All phases with conditional styling
+
+---
+
+## Phase-Specific Risk Summary
+
+| Phase | Feature | High-Risk Pitfalls | Mitigation Focus |
+|-------|---------|-------------------|------------------|
+| 1 | Activity Bar | #1 Z-Index, #5 Layout Thrashing | Z-index scale, CSS Grid layout |
+| 2 | Command Forms + Markdown | #3 XSS, #6 Stale Closures, #8 Performance | rehype-sanitize, useCallback, virtualization |
+| 3 | Tabbed Viewer | #2 Memory Leak, #4 AnimatePresence, #10 State Desync | Cleanup patterns, single source of truth |
+| 4 | Tree View | #7 Type Confusion, #9 Event Cleanup | Discriminated unions, effect cleanup |
+
+---
+
+## Integration Risks with Existing Codebase
+
+### Existing Patterns to Preserve
+
+1. **Tab lifecycle** (`TabContext.tsx`) - Don't duplicate session state
+2. **Store subscriptions** (`sessionStore.ts`) - Use `subscribeWithSelector` patterns
+3. **Animation patterns** (`framer-motion` usage in `SessionList.tsx`, `TabManager.tsx`) - Keep AnimatePresence outside conditionals
+4. **Radix component usage** - Respect existing portal/overlay patterns
+
+### Files Most Likely to Need Modification
+
+| File | Risk | Reason |
+|------|------|--------|
+| `App.tsx` | Medium | Layout restructure for activity bar |
+| `TabContext.tsx` | High | Tab state management changes |
+| `TabManager.tsx` | Medium | Animation and z-index changes |
+| `sessionStore.ts` | Low | May need additional selectors |
+
+---
 
 ## Sources
 
-**Plugin Architecture & Isolation:**
-- [Plug-in Architecture (Medium)](https://medium.com/omarelgabrys-blog/plug-in-architecture-dec207291800) — Core system design trade-offs
-- [Scaling Infrastructure: Typed, Pluggable Framework (Medium)](https://scaibu.medium.com/scaling-infrastructure-fast-you-need-a-typed-pluggable-framework-now-a8eb7cfafe8a) — Type safety in plugin systems
-- [Pluggable Architecture: Enabling Extensibility (Moments Log)](https://www.momentslog.com/development/design-pattern/pluggable-architecture-enabling-extensibility-without-core-changes) — Core changes avoidance
-- [Software Extensibility Guide (Strapi)](https://strapi.io/blog/extensibility-in-software-engineering) — Boundaries and governance
-- [Common Mistakes When Using Command Pattern (ACM)](https://dl.acm.org/doi/10.1145/3424771.3424773) — Command pattern anti-patterns
-
-**Tauri Desktop Application Concerns:**
-- [Tauri vs. Electron: Performance and Trade-offs (Hopp)](https://www.gethopp.app/blog/tauri-vs-electron) — Security mistakes in desktop apps
-- [Tauri vs Electron Comparison 2025 (RaftLabs)](https://www.raftlabs.com/blog/tauri-vs-electron-pros-cons/) — Cross-platform consistency issues
-- [Electron vs. Tauri 2025 (DoltHub)](https://www.dolthub.com/blog/2025-11-13-electron-vs-tauri/) — Plugin ecosystem maturity
-
-**Data Source Abstraction:**
-- [DataSources and Repository Patterns (Carrion.dev)](https://carrion.dev/en/posts/datasources-repository-patterns/) — Data layer abstraction
-- [Repository Pattern: Over-Engineering? (Medium)](https://medium.com/@abied.abiad/the-repository-pattern-your-gateway-to-clean-data-c72235f34916) — Avoiding over-abstraction
-- [Data Abstraction Using APIs (APIscene)](https://www.apiscene.io/lifecycle/data-abstraction-using-apis/) — API abstraction patterns
-
-**React Component Coupling:**
-- [React: Decoupling Components (DEV)](https://dev.to/argonauta/react-advance-decoupling-your-components-in-the-right-way-4pkn) — Component-hook tight coupling
-- [React Code Review: Tightly Coupled Components (Profy.dev)](https://profy.dev/article/react-code-review-tightly-coupled-components) — Mixed responsibilities anti-pattern
-- [Building Scalable React Architecture (Medium)](https://boxofkarthi.medium.com/building-a-scalable-data-layered-react-architecture-with-nx-c0b606651e30) — Data-layered architecture
-
-**Versioning & Breaking Changes:**
-- [Terraform Plugin Versioning (HashiCorp)](https://developer.hashicorp.com/terraform/plugin/best-practices/versioning) — Breaking change documentation
-- [Kubebuilder Plugin Versioning](https://kubebuilder.io/plugins/plugins-versioning) — When version bumps required
-- [WordPress Plugin Version Management 2025](https://wponcall.com/wordpress-plugin-version-management/) — Version update risks
-
----
-*Pitfalls research for: Plugin-based UI systems for terminal applications*
-*Researched: 2026-01-24*
+- [Radix Primitives z-index #1317](https://github.com/radix-ui/primitives/issues/1317)
+- [Zustand subscriptions #2054](https://github.com/pmndrs/zustand/discussions/2054)
+- [React Markdown Security 2025](https://strapi.io/blog/react-markdown-complete-guide-security-styling)
+- [AnimatePresence bugs](https://github.com/framer/motion/issues/625)
+- [React Hook Form async validation](https://blog.benorloff.co/async-form-validation-with-zod-react-hook-form)
+- [TypeScript Discriminated Unions](https://www.totaltypescript.com/discriminated-unions-are-a-devs-best-friend)
+- [react-markdown performance #1027](https://github.com/orgs/remarkjs/discussions/1027)
+- [Stale closures in React](https://www.dhiwise.com/post/react-stale-closure-common-problems-and-easy-solutions)
+- [Z-index and stacking contexts](https://dev.to/minoosh/today-i-learned-layouts-and-the-z-index-trap-in-react-366f)

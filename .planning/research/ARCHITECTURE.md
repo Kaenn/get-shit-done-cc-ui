@@ -1,565 +1,513 @@
-# Architecture Research: Plugin System for React/Tauri Terminal UI
+# Architecture Research: v1.1 UI Enhancements
 
-**Domain:** React Desktop Application Plugin Architecture
-**Researched:** 2026-01-24
-**Confidence:** HIGH
+**Researched:** 2026-01-25
+**Confidence:** HIGH (based on codebase analysis)
 
-## Standard Architecture
+## Executive Summary
 
-### System Overview
+The v1.1 UI enhancements integrate cleanly with the existing three-pane architecture. The main structural change is adding an icon sidebar to the left pane that switches between Commands view (existing) and State view (new). The right pane changes from a single view to a tabbed file viewer. Command forms require schema-driven generation from an enhanced registry.
 
+Key architectural decisions:
+1. **Icon sidebar state:** Zustand store (extend `gsdStore`) for persistence
+2. **Frontmatter parsing:** Simple regex-based approach (already proven in `parsers.ts`)
+3. **Tab management:** Reuse existing custom Tabs component (`ui/tabs.tsx`)
+4. **Command schemas:** Extend `GSDCommandDefinition` with field schema for dynamic forms
+
+---
+
+## Integration Points
+
+### Existing Component -> New Feature Connection
+
+| Existing Component | New Integration | Impact |
+|--------------------|-----------------|--------|
+| `GSDPanel.tsx` | Add icon sidebar before `ThreePane` | Wrapper layout change |
+| `GSDCommandPanel.tsx` | Becomes one view option in left pane | Component unchanged, conditional rendering |
+| `GSDPanelContent.tsx` | Evolves to tabbed file viewer | Major refactor |
+| `gsdStore.ts` | Add sidebar state, active view, tabs | Store extension |
+| `command-registry.ts` | Add field schemas for form generation | Type extension |
+| `parsers.ts` | Add MILESTONES.md parser | New function |
+| `useGSDData.ts` | Parse milestones, provide to state tree | Hook extension |
+
+### Data Flow Changes
+
+**Current Flow:**
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     PRESENTATION LAYER                           │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   Terminal   │  │   Plugin     │  │   Plugin     │          │
-│  │   (Center)   │  │  Panel A     │  │  Panel B     │          │
-│  │              │  │              │  │              │          │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
-│         │                 │                  │                  │
-├─────────┴─────────────────┴──────────────────┴──────────────────┤
-│                   PLUGIN ORCHESTRATION LAYER                     │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              PluginRegistry (Manager)                     │   │
-│  │  - Plugin Discovery & Loading                            │   │
-│  │  - Lifecycle Management (mount/unmount)                  │   │
-│  │  - Component Injection Points                            │   │
-│  │  - Isolation Enforcement                                 │   │
-│  └────────────────────┬─────────────────────────────────────┘   │
-│                       │                                          │
-├───────────────────────┴──────────────────────────────────────────┤
-│                    BUSINESS LOGIC LAYER                          │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌───────────┐  ┌────────────┐  ┌────────────┐                 │
-│  │ Plugin    │  │ Plugin     │  │ Plugin     │                 │
-│  │ Store A   │  │ Store B    │  │ Store C    │                 │
-│  │ (Zustand  │  │ (Zustand   │  │ (Zustand   │                 │
-│  │  Slice)   │  │  Slice)    │  │  Slice)    │                 │
-│  └─────┬─────┘  └──────┬─────┘  └──────┬─────┘                 │
-│        │               │                │                       │
-├────────┴───────────────┴────────────────┴───────────────────────┤
-│                      DATA ADAPTER LAYER                          │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │           PluginDataSource Interface                      │   │
-│  │  - Standardized data contract                            │   │
-│  │  - Plugin-specific implementations                       │   │
-│  └────────────────────┬─────────────────────────────────────┘   │
-│                       │                                          │
-├───────────────────────┴──────────────────────────────────────────┤
-│                    PERSISTENCE LAYER                             │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │ localStorage │  │ Tauri Store  │  │ File System  │          │
-│  │ (Web mode)   │  │ (Native)     │  │ (Sessions)   │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
-└─────────────────────────────────────────────────────────────────┘
+projectPath -> useGSDData -> parsers -> gsdStore -> GSDPanel children
+                                                         |
+                                       GSDCommandPanel   |   GSDPanelContent
+                                            |                    |
+                                       Commands tree         Tree view
 ```
 
-### Component Responsibilities
-
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| **PluginRegistry** | Central registry that discovers, loads, and manages plugin lifecycle. Enforces isolation boundaries. | Singleton service that maintains a `Map<string, PluginDefinition>` and provides `register()`, `unregister()`, `getPlugin()` methods |
-| **PluginDefinition** | Plugin manifest describing metadata, UI components, data sources, and capabilities | TypeScript interface with `id`, `name`, `version`, `components`, `dataSource`, `config` |
-| **PluginDataSource** | Interface for plugins to provide data. Core features consume this without knowing plugin specifics | Abstract class or interface with methods like `fetchData()`, `subscribe()`, `transform()` |
-| **PluginPanel** | React component provided by plugin, rendered in side panel slot | Functional React component using plugin-specific hooks and state |
-| **PluginStore (Slice)** | Isolated Zustand slice for plugin state, namespaced to prevent collisions | `StateCreator<PluginState>` following Zustand slice pattern with plugin ID prefix |
-| **SlotRenderer** | Component that renders plugin UI in designated injection points | React component that reads from PluginRegistry and renders registered components |
-| **TabContext** | Existing tab management, extended to track which plugin a tab belongs to | Current TabContext enhanced with `pluginId?: string` field |
-| **Core Features** | Plugin-agnostic UI (tree view, status bar, action buttons) that work with any plugin | Generic React components that consume PluginDataSource interface |
-
-## Recommended Project Structure
-
+**New Flow:**
 ```
-src/
-├── plugins/                    # Plugin system infrastructure
-│   ├── core/                   # Core plugin architecture
-│   │   ├── PluginRegistry.ts   # Central plugin manager
-│   │   ├── PluginDefinition.ts # Plugin manifest types
-│   │   ├── PluginContext.tsx   # React context for plugin system
-│   │   └── types.ts            # Shared plugin types
-│   ├── adapters/               # Data source adapters
-│   │   ├── PluginDataSource.ts # Base adapter interface
-│   │   └── index.ts
-│   ├── ui/                     # Plugin UI components
-│   │   ├── SlotRenderer.tsx    # Injection point renderer
-│   │   ├── PluginPanel.tsx     # Base panel wrapper
-│   │   └── PluginErrorBoundary.tsx
-│   └── built-in/               # Built-in plugins
-│       ├── git-plugin/         # Example: Git integration
-│       │   ├── GitPlugin.tsx
-│       │   ├── GitDataSource.ts
-│       │   ├── GitStore.ts
-│       │   └── plugin.config.ts
-│       └── file-tree-plugin/   # Example: File explorer
-│           ├── FileTreePlugin.tsx
-│           ├── FileDataSource.ts
-│           └── plugin.config.ts
-├── contexts/
-│   ├── TabContext.tsx          # Enhanced with plugin support
-│   └── PluginContext.tsx       # New: Plugin system context
-├── stores/
-│   ├── pluginStore.ts          # Core plugin state (not plugin-specific)
-│   └── createPluginSlice.ts    # Factory for plugin slices
-└── components/
-    ├── TabManager.tsx          # Enhanced to show plugin tabs
-    └── TerminalView.tsx        # Center terminal, plugin-agnostic
+projectPath -> useGSDData -> parsers (extended) -> gsdStore (extended)
+                    |                                    |
+                    v                                    v
+              MILESTONES.md                     IconSidebar state
+              PLAN files                        Active left view
+              STATE.md                          File viewer tabs
+                    |                                    |
+                    v                                    v
+              LeftPane (conditional)            RightPane (tabbed)
+                    |                                    |
+          +--------+--------+                   +-------+-------+
+          |                 |                   |               |
+     Commands          StateTree           FileViewer      FileViewer
+     (existing)        (new)               Tab 1           Tab N
 ```
 
-### Structure Rationale
+---
 
-- **plugins/core/:** Centralized plugin infrastructure. All plugin system logic lives here for easy maintenance.
-- **plugins/adapters/:** Data source adapters provide clean boundaries between plugins and core features.
-- **plugins/ui/:** Reusable UI components for plugin rendering. Enforces consistent plugin behavior.
-- **plugins/built-in/:** Each built-in plugin is self-contained with its own components, store, and data source.
-- **Separation of plugin system from plugins:** Core infrastructure is separate from actual plugin implementations.
+## New Components Needed
 
-## Architectural Patterns
+### Core Components
 
-### Pattern 1: Plugin Registry with Component Injection
+| Component | Purpose | Dependencies | Estimated Complexity |
+|-----------|---------|--------------|---------------------|
+| `IconSidebar.tsx` | Vertical icon bar switching left pane views | gsdStore, lucide-react | Low |
+| `StateTreeView.tsx` | Tree showing milestones + current phases | gsdStore, GSDTreeNode | Medium |
+| `MilestoneNode.tsx` | Tree node for milestone display | motion, lucide-react | Low |
+| `FileViewerTabs.tsx` | Tabbed container for file viewing | ui/tabs, gsdStore | Medium |
+| `FileViewerPane.tsx` | Single file renderer with frontmatter | markdown renderer | Medium |
+| `FrontmatterDisplay.tsx` | Renders parsed frontmatter as key-value | Tailwind | Low |
+| `CommandSchemaForm.tsx` | Dynamic form generator from schema | react-hook-form, zod | High |
 
-**What:** Central registry that manages plugin lifecycle and provides injection points for plugin UI.
+### Extended Types/Schemas
 
-**When to use:** When you need a scalable way to add/remove features without modifying core code.
+| File | Addition | Purpose |
+|------|----------|---------|
+| `command-registry.ts` | `CommandFieldSchema` type | Define form field types/validation |
+| `parsers.ts` | `parseMilestonesMd()` function | Parse MILESTONES.md structure |
+| `parsers.ts` | `parseFrontmatter()` function | Generic frontmatter extraction |
+| `gsdStore.ts` | `sidebarView`, `fileViewerTabs` state | UI state management |
 
-**Trade-offs:**
-- **Pros:** Excellent extensibility, clear boundaries, easy to add/remove plugins
-- **Cons:** Slight indirection overhead, requires careful interface design
+---
 
-**Example:**
+## Detailed Architecture
+
+### 1. Icon Sidebar State
+
+**Recommendation:** Extend `gsdStore.ts` with persisted state.
+
 ```typescript
-// Plugin Definition
-interface PluginDefinition {
-  id: string;
-  name: string;
-  version: string;
+// Add to gsdStore.ts state
+interface GSDState {
+  // Existing...
 
-  // UI Components
-  components: {
-    panel?: React.ComponentType<PluginPanelProps>;
-    statusBar?: React.ComponentType<PluginStatusProps>;
-    contextMenu?: React.ComponentType<PluginContextMenuProps>;
+  // NEW: Icon sidebar
+  sidebarActiveView: 'commands' | 'state';
+  setSidebarView: (view: 'commands' | 'state') => void;
+
+  // NEW: File viewer tabs
+  fileViewerTabs: FileTab[];
+  activeFileTabId: string | null;
+  addFileTab: (file: PlanningFile) => void;
+  removeFileTab: (tabId: string) => void;
+  setActiveFileTab: (tabId: string) => void;
+}
+
+interface FileTab {
+  id: string;
+  filename: string;
+  filepath: string;
+  type: 'state' | 'roadmap' | 'plan' | 'milestone' | 'decision';
+  content?: string;
+}
+```
+
+**Why Zustand:** Persists user preference (Commands vs State view), integrates with existing store pattern, avoids prop drilling.
+
+**Alternative considered:** Local React state in `GSDPanel`. Rejected because view preference should persist across sessions.
+
+### 2. Frontmatter Parsing
+
+**Recommendation:** Extend existing regex-based approach in `parsers.ts`.
+
+The codebase already parses frontmatter without external libraries in `parsePlanMd()`:
+
+```typescript
+// Existing pattern (parsers.ts:171-174)
+const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+```
+
+**New function:**
+
+```typescript
+export interface Frontmatter {
+  [key: string]: string | number | boolean | string[];
+}
+
+export function parseFrontmatter(content: string): {
+  frontmatter: Frontmatter | null;
+  body: string;
+} {
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)/);
+  if (!match) {
+    return { frontmatter: null, body: content };
+  }
+
+  const yamlBlock = match[1];
+  const body = match[2] || '';
+  const frontmatter: Frontmatter = {};
+
+  // Simple YAML parsing (key: value per line)
+  for (const line of yamlBlock.split('\n')) {
+    const keyValue = line.match(/^(\w+):\s*(.*)$/);
+    if (keyValue) {
+      const [, key, value] = keyValue;
+      frontmatter[key] = inferType(value.trim());
+    }
+  }
+
+  return { frontmatter, body };
+}
+
+function inferType(value: string): string | number | boolean {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  if (/^\d+$/.test(value)) return parseInt(value, 10);
+  if (/^\d+\.\d+$/.test(value)) return parseFloat(value);
+  return value;
+}
+```
+
+**Why not gray-matter:** Already have working regex approach, avoiding new dependency, sufficient for YAML-like frontmatter.
+
+### 3. Tab Management for File Viewer
+
+**Recommendation:** Reuse existing custom `Tabs` component pattern.
+
+The codebase has a working Tabs implementation in `ui/tabs.tsx` with:
+- Context-based value management
+- Controlled component pattern
+- Accessible ARIA attributes
+
+**File viewer tab structure:**
+
+```typescript
+// In FileViewerTabs.tsx
+<Tabs value={activeFileTabId} onValueChange={setActiveFileTab}>
+  <TabsList className="flex-shrink-0 border-b">
+    {fileViewerTabs.map(tab => (
+      <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2">
+        <FileTypeIcon type={tab.type} />
+        <span>{tab.filename}</span>
+        <CloseButton onClick={() => removeFileTab(tab.id)} />
+      </TabsTrigger>
+    ))}
+  </TabsList>
+  {fileViewerTabs.map(tab => (
+    <TabsContent key={tab.id} value={tab.id}>
+      <FileViewerPane file={tab} />
+    </TabsContent>
+  ))}
+</Tabs>
+```
+
+**Tab state in Zustand:** Allows persistence and cross-component access (tree node click opens tab).
+
+### 4. Command Schema Definition and Form Generation
+
+**Recommendation:** Extend `GSDCommandDefinition` with Zod-compatible field schemas.
+
+**Current parameter definition (simple):**
+```typescript
+interface CommandParameter {
+  name: string;
+  type: 'string' | 'number';
+  label: string;
+  required: boolean;
+  defaultValue?: string | number;
+}
+```
+
+**Enhanced schema (supports all 27 commands):**
+
+```typescript
+// Extended command-registry.ts
+import { z } from 'zod';
+
+export type FieldType =
+  | 'text'
+  | 'number'
+  | 'select'
+  | 'multiselect'
+  | 'checkbox'
+  | 'textarea'
+  | 'phase-select'  // Special: populated from current phases
+  | 'plan-select';  // Special: populated from phase plans
+
+export interface CommandFieldSchema {
+  name: string;
+  type: FieldType;
+  label: string;
+  description?: string;
+  required: boolean;
+  defaultValue?: unknown;
+
+  // For select/multiselect
+  options?: { value: string; label: string }[];
+  dynamicOptions?: 'phases' | 'plans' | 'milestones';
+
+  // Validation
+  validation?: {
+    min?: number;
+    max?: number;
+    pattern?: string;
+    custom?: (value: unknown) => boolean | string;
   };
 
-  // Data Source
-  dataSource: PluginDataSource;
-
-  // Lifecycle hooks
-  onActivate?: () => void | Promise<void>;
-  onDeactivate?: () => void | Promise<void>;
-
-  // Configuration
-  config?: PluginConfig;
+  // Dependencies
+  showWhen?: {
+    field: string;
+    equals: unknown;
+  };
 }
 
-// Registry
-class PluginRegistry {
-  private plugins = new Map<string, PluginDefinition>();
+export interface GSDCommandDefinition {
+  id: string;
+  fullCommand: string;
+  label: string;
+  description: string;
+  category: CommandCategory;
+  icon: LucideIcon;
 
-  register(plugin: PluginDefinition): void {
-    if (this.plugins.has(plugin.id)) {
-      throw new Error(`Plugin ${plugin.id} already registered`);
+  // Replace simple parameters with schema
+  fields: CommandFieldSchema[];
+
+  // Keep existing eligibility function
+  isActive: (state: StateContext) => boolean;
+
+  // NEW: Command-specific hints
+  hints?: string[];
+
+  // NEW: For multi-phase or custom execution
+  executor?: 'terminal' | 'orchestrator' | 'modal';
+}
+```
+
+**Form generation strategy:**
+
+```typescript
+// CommandSchemaForm.tsx
+function CommandSchemaForm({ command }: { command: GSDCommandDefinition }) {
+  const { phases, plans } = useGSDStore();
+
+  const getDynamicOptions = (field: CommandFieldSchema) => {
+    if (field.dynamicOptions === 'phases') {
+      return phases.map(p => ({ value: String(p.number), label: p.name }));
     }
-    this.plugins.set(plugin.id, plugin);
-    plugin.onActivate?.();
-  }
-
-  getPlugin(id: string): PluginDefinition | undefined {
-    return this.plugins.get(id);
-  }
-
-  getAllPlugins(): PluginDefinition[] {
-    return Array.from(this.plugins.values());
-  }
-}
-
-// Slot Renderer (Injection Point)
-function PluginPanelSlot({ pluginId }: { pluginId: string }) {
-  const plugin = usePlugin(pluginId);
-  const PanelComponent = plugin?.components.panel;
-
-  if (!PanelComponent) return null;
+    if (field.dynamicOptions === 'plans') {
+      return plans.map(p => ({ value: String(p.planNumber), label: p.name }));
+    }
+    return field.options || [];
+  };
 
   return (
-    <PluginErrorBoundary pluginId={pluginId}>
-      <PanelComponent />
-    </PluginErrorBoundary>
+    <form onSubmit={handleSubmit}>
+      {command.fields.map(field => (
+        <FormField key={field.name} field={field} options={getDynamicOptions(field)} />
+      ))}
+    </form>
   );
 }
 ```
 
-### Pattern 2: Data Source Adapter with Interface Segregation
+**Existing dependencies support this:**
+- `react-hook-form` (in package.json)
+- `zod` (in package.json)
+- `@hookform/resolvers` (in package.json)
 
-**What:** Plugins provide data through a standardized interface. Core features consume this interface without knowing plugin implementation details.
+---
 
-**When to use:** When core UI components need to work with data from multiple plugin sources.
+## Component Layout Structure
 
-**Trade-offs:**
-- **Pros:** Strong decoupling, testable, plugin-agnostic core features
-- **Cons:** Requires careful interface design, may need versioning for breaking changes
+### New Left Pane Structure
 
-**Example:**
+```
++------------------+------------------------+
+| IconSidebar (48px)|  Left Pane Content     |
+|                   |                        |
+| [Commands icon]   |  (Switches based on    |
+| [State icon]      |   sidebarActiveView)   |
+|                   |                        |
+| --- spacer ---    |  Commands: existing    |
+|                   |  GSDCommandPanel       |
+| [Settings icon?]  |                        |
+|                   |  State: new            |
+|                   |  StateTreeView         |
++------------------+------------------------+
+```
+
+**IconSidebar implementation:**
+
 ```typescript
-// Data Source Interface
-interface PluginDataSource {
-  // Basic queries
-  fetchData(params?: QueryParams): Promise<DataNode[]>;
-
-  // Real-time updates
-  subscribe(callback: (data: DataNode[]) => void): Unsubscribe;
-
-  // Transformations
-  transform(data: unknown): DataNode[];
-
-  // Metadata
-  getSchema(): DataSchema;
-}
-
-// Plugin-specific implementation
-class GitDataSource implements PluginDataSource {
-  async fetchData(params?: QueryParams): Promise<DataNode[]> {
-    const gitStatus = await api.executeCommand('git status --porcelain');
-    return this.transform(gitStatus);
-  }
-
-  subscribe(callback: (data: DataNode[]) => void): Unsubscribe {
-    const watcher = fs.watch('.git', () => {
-      this.fetchData().then(callback);
-    });
-    return () => watcher.close();
-  }
-
-  transform(gitOutput: string): DataNode[] {
-    return gitOutput.split('\n').map(line => ({
-      id: line,
-      label: line.substring(3),
-      status: line.substring(0, 2),
-      type: 'file'
-    }));
-  }
-
-  getSchema(): DataSchema {
-    return { type: 'git-status', version: '1.0' };
-  }
-}
-
-// Core feature using the adapter (plugin-agnostic)
-function TreeView({ dataSource }: { dataSource: PluginDataSource }) {
-  const [data, setData] = useState<DataNode[]>([]);
-
-  useEffect(() => {
-    dataSource.fetchData().then(setData);
-    return dataSource.subscribe(setData);
-  }, [dataSource]);
+// IconSidebar.tsx
+export function IconSidebar() {
+  const { sidebarActiveView, setSidebarView } = useGSDStore();
 
   return (
-    <div>
-      {data.map(node => <TreeNode key={node.id} {...node} />)}
+    <div className="w-12 flex flex-col items-center py-2 border-r border-border bg-muted/30">
+      <IconButton
+        icon={Terminal}
+        tooltip="Commands"
+        active={sidebarActiveView === 'commands'}
+        onClick={() => setSidebarView('commands')}
+      />
+      <IconButton
+        icon={GitBranch}
+        tooltip="State"
+        active={sidebarActiveView === 'state'}
+        onClick={() => setSidebarView('state')}
+      />
+      <div className="flex-1" />
+      {/* Future: Settings, etc. */}
     </div>
   );
 }
 ```
 
-### Pattern 3: Zustand Slice Pattern for Plugin State Isolation
-
-**What:** Each plugin gets its own Zustand slice with namespaced keys to prevent state collisions.
-
-**When to use:** When plugins need their own state that doesn't interfere with other plugins or core app state.
-
-**Trade-offs:**
-- **Pros:** Complete state isolation, no naming conflicts, easy debugging (state is namespaced)
-- **Cons:** Slight overhead from slice composition, requires slice factory pattern
-
-**Example:**
-```typescript
-// Slice Factory
-function createPluginSlice<T>(
-  pluginId: string,
-  initialState: T,
-  actions: (set: SetState<T>, get: GetState<T>) => Record<string, any>
-): StateCreator<T> {
-  return (set, get) => ({
-    ...initialState,
-    ...actions(set, get),
-  });
-}
-
-// Plugin-specific store
-interface GitPluginState {
-  branches: string[];
-  currentBranch: string;
-  changes: FileChange[];
-}
-
-const createGitSlice = createPluginSlice<GitPluginState>(
-  'git-plugin',
-  {
-    branches: [],
-    currentBranch: 'main',
-    changes: []
-  },
-  (set, get) => ({
-    fetchBranches: async () => {
-      const branches = await api.executeCommand('git branch');
-      set({ branches: branches.split('\n') });
-    },
-    switchBranch: (branch: string) => {
-      set({ currentBranch: branch });
-    }
-  })
-);
-
-// Combine with other plugin slices
-const usePluginStore = create<GitPluginState & FilePluginState>()((...a) => ({
-  ...createGitSlice(...a),
-  ...createFileSlice(...a),
-}));
-```
-
-### Pattern 4: React Context for Plugin Communication
-
-**What:** Use React Context to provide plugin registry and utilities to all plugin components.
-
-**When to use:** For cross-cutting plugin concerns like accessing registry, shared utilities, or parent tab context.
-
-**Trade-offs:**
-- **Pros:** Clean dependency injection, no prop drilling, easy to test
-- **Cons:** Context changes can cause re-renders (mitigate with selector patterns)
-
-**Example:**
-```typescript
-interface PluginContextValue {
-  registry: PluginRegistry;
-  currentPluginId: string | null;
-  registerSlot: (slotId: string, component: React.ComponentType) => void;
-  emitEvent: (event: PluginEvent) => void;
-}
-
-const PluginContext = createContext<PluginContextValue | null>(null);
-
-export function PluginProvider({ children }: { children: React.ReactNode }) {
-  const registry = useMemo(() => new PluginRegistry(), []);
-  const [currentPluginId, setCurrentPluginId] = useState<string | null>(null);
-
-  const value = useMemo(() => ({
-    registry,
-    currentPluginId,
-    registerSlot: (slotId, component) => registry.registerSlot(slotId, component),
-    emitEvent: (event) => registry.emit(event),
-  }), [registry, currentPluginId]);
-
-  return <PluginContext.Provider value={value}>{children}</PluginContext.Provider>;
-}
-
-export function usePlugin(pluginId?: string) {
-  const context = useContext(PluginContext);
-  if (!context) throw new Error('usePlugin must be used within PluginProvider');
-
-  const id = pluginId ?? context.currentPluginId;
-  return id ? context.registry.getPlugin(id) : null;
-}
-```
-
-## Data Flow
-
-### Request Flow: Plugin Panel → Data Source → UI Update
+### New Right Pane Structure
 
 ```
-[User Action in Plugin Panel]
-    ↓
-[Plugin Component calls plugin.dataSource.fetchData()]
-    ↓
-[PluginDataSource implementation executes]
-    ↓
-[Data transformed to standardized DataNode[]]
-    ↓
-[Plugin State updated via Zustand slice]
-    ↓
-[Core Feature (TreeView) re-renders with new data]
++--------------------------------+
+| File Tabs (closable)           |
+| [STATE.md] [ROADMAP.md] [x]    |
++--------------------------------+
+| Frontmatter (collapsible)      |
+| phase: 01-foundation           |
+| plan: 03                       |
++--------------------------------+
+| Markdown Content               |
+| (rendered with existing        |
+|  markdown components)          |
+|                                |
++--------------------------------+
 ```
 
-### State Management Flow
+---
 
-```
-[PluginRegistry]
-    ↓ (provides)
-[PluginContext] ←→ [TabContext]
-    ↓ (consumed by)
-[Plugin Components] → [Plugin Zustand Slice] → [Plugin State]
-    ↓                         ↓
-[Core Features] ←────── [PluginDataSource]
-```
+## Suggested Build Order
 
-### Key Data Flows
+Based on dependencies and integration points:
 
-1. **Plugin Registration Flow:** PluginRegistry.register() → Plugin manifest validated → Plugin store slice created → Plugin UI mounted in slot
-2. **Data Fetch Flow:** Core feature requests data → PluginDataSource.fetchData() → Plugin-specific logic → Standardized data returned → UI updates
-3. **Event Flow:** Plugin emits event → PluginContext.emitEvent() → Event bus distributes → Other plugins/core can subscribe
-4. **Isolation Flow:** Each plugin has namespaced state → No direct access to other plugins → Communication only through events or shared data sources
+### Phase 1: Foundation (Icon Sidebar + Store Extensions)
 
-## Scaling Considerations
+1. **Extend gsdStore.ts** - Add sidebar state, file tab state
+   - *Rationale:* All other components depend on this state
+   - *Risk:* Low - additive change to existing store
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 0-5 plugins | Simple registry, in-memory Map, synchronous loading |
-| 5-15 plugins | Add lazy loading for plugin components, implement plugin lifecycle hooks, consider split bundles |
-| 15+ plugins | Lazy loading mandatory, Web Workers for heavy plugin logic, virtual scrolling for plugin panels, plugin sandboxing via iframes (if untrusted) |
+2. **Create IconSidebar.tsx** - Simple icon bar component
+   - *Rationale:* Minimal dependencies, enables view switching
+   - *Dependencies:* gsdStore
 
-### Scaling Priorities
+3. **Update GSDPanel.tsx** - Integrate icon sidebar with three-pane
+   - *Rationale:* Layout wrapper needs sidebar before content
+   - *Dependencies:* IconSidebar, gsdStore
 
-1. **First bottleneck:** Too many plugins loaded at once → Lazy load plugin components using `React.lazy()` and only mount when tab is active
-2. **Second bottleneck:** Plugin state growing too large → Implement plugin state persistence with selective hydration, unload inactive plugin state
-3. **Third bottleneck:** Plugin isolation violations → Move to stricter isolation with separate contexts or iframe sandboxing for untrusted plugins
+### Phase 2: State Tree View
 
-## Anti-Patterns
+4. **Create StateTreeView.tsx** - Milestone/phase tree
+   - *Rationale:* Core new feature for state visualization
+   - *Dependencies:* gsdStore, existing GSDTreeNode patterns
 
-### Anti-Pattern 1: Shared Global State Between Plugins
+5. **Add parseMilestonesMd to parsers.ts** - Parse MILESTONES.md
+   - *Rationale:* StateTreeView needs milestone data
+   - *Dependencies:* None
 
-**What people do:** Create a shared Zustand store that all plugins write to directly.
+6. **Extend useGSDData hook** - Include milestones
+   - *Rationale:* Hook orchestrates all parsing
+   - *Dependencies:* parseMilestonesMd
 
-**Why it's wrong:**
-- Creates tight coupling between plugins
-- One plugin can break another by corrupting shared state
-- Impossible to unload a plugin cleanly (state might be referenced elsewhere)
-- Violates isolation principle
+### Phase 3: File Viewer Tabs
 
-**Do this instead:**
-- Each plugin gets its own Zustand slice (namespaced)
-- Plugins communicate via events through PluginContext
-- Shared data flows through PluginDataSource interfaces, not direct state access
+7. **Create FileViewerTabs.tsx** - Tab container
+   - *Rationale:* Wrapper for file viewing
+   - *Dependencies:* ui/tabs, gsdStore
 
-### Anti-Pattern 2: Plugin Reaching Into Core Components
+8. **Create FileViewerPane.tsx** - Single file renderer
+   - *Rationale:* Actual file content display
+   - *Dependencies:* parseFrontmatter
 
-**What people do:** Plugin imports and directly manipulates core components or their internal state.
+9. **Add parseFrontmatter to parsers.ts** - Generic frontmatter parsing
+   - *Rationale:* FileViewerPane needs parsed frontmatter
+   - *Dependencies:* None
 
-**Why it's wrong:**
-- Breaks encapsulation and makes core components brittle
-- Plugin updates can break when core changes
-- Creates hidden dependencies that are hard to track
+10. **Create FrontmatterDisplay.tsx** - Frontmatter key-value UI
+    - *Rationale:* Displays parsed frontmatter
+    - *Dependencies:* None
 
-**Do this instead:**
-- Core components expose well-defined extension points (slots)
-- Plugins provide React components to render in those slots
-- Communication through props and context, never direct imports of core internals
+### Phase 4: Command Schema Forms
 
-### Anti-Pattern 3: Direct DOM Manipulation from Plugins
+11. **Extend command-registry.ts** - Add field schemas
+    - *Rationale:* Form generation needs schema definitions
+    - *Dependencies:* None
 
-**What people do:** Plugin uses `document.querySelector()` to modify DOM outside its component tree.
+12. **Create CommandSchemaForm.tsx** - Dynamic form generator
+    - *Rationale:* Replaces simple GSDCommandDialog form
+    - *Dependencies:* command-registry, react-hook-form, zod
 
-**Why it's wrong:**
-- Bypasses React's reconciliation, causes rendering bugs
-- Breaks in different layouts or when core structure changes
-- Makes debugging nearly impossible
+13. **Update GSDCommandDialog.tsx** - Use schema form
+    - *Rationale:* Integration point
+    - *Dependencies:* CommandSchemaForm
 
-**Do this instead:**
-- Plugins render only within their designated slot
-- Use React portals if absolutely necessary to render outside plugin tree
-- Core provides proper injection points (slots) for plugin UI
+### Phase 5: Polish & Integration
 
-### Anti-Pattern 4: Tight Coupling to Specific Data Formats
+14. **Tree node -> file tab integration** - Click plan opens in viewer
+    - *Rationale:* UX connection between tree and viewer
+    - *Dependencies:* StateTreeView, FileViewerTabs, gsdStore
 
-**What people do:** Core features hard-code assumptions about Git data structure, breaking when using file system plugin.
+15. **Keyboard navigation** - Tab switching shortcuts
+    - *Rationale:* Power user UX
+    - *Dependencies:* FileViewerTabs
 
-**Why it's wrong:**
-- Core becomes plugin-specific instead of plugin-agnostic
-- Can't swap plugins without rewriting core features
-- Violates Interface Segregation Principle
+---
 
-**Do this instead:**
-- Define generic `PluginDataSource` interface
-- Core features consume interface, not concrete implementations
-- Plugins implement interface with their specific data transformations
+## Risks & Mitigations
 
-## Integration Points
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Store hydration timing with new state | Medium | Medium | Use partialize pattern (already in gsdStore), ensure hasHydrated check covers new state |
+| Three-pane layout with nested icon bar | Low | Low | Icon bar is outside ThreePane, simple flex layout |
+| File viewer performance with large files | Low | Medium | Virtualize long markdown content if needed |
+| Command schema migration (27 commands) | Medium | Medium | Migrate incrementally, keep isActive pattern unchanged |
+| Type safety across form generation | Medium | Medium | Use Zod schemas, test each field type |
 
-### External Services
+---
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Tauri Backend | Plugin data sources call Tauri commands via API adapter | Use existing `api.executeCommand()` pattern for Tauri commands |
-| File System | PluginDataSource implementations can use fs watchers for real-time updates | Tauri provides file system APIs, wrap in data source |
-| Git | Execute git commands via Tauri backend, transform output in GitDataSource | Built-in plugin example |
-| LSP Servers | WebSocket connection managed by plugin, data exposed via PluginDataSource | Advanced plugin example for IDE features |
+## Non-Functional Considerations
 
-### Internal Boundaries
+### Performance
+- File viewer should lazy-load content (only when tab active)
+- Frontmatter parsing is O(n) on lines, negligible for typical sizes
+- Tree expansion state already optimized via Set
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Plugin ↔ Core Features | PluginDataSource interface | Core features never import plugins directly |
-| Plugin ↔ Plugin | Event bus via PluginContext | Plugins emit events, others subscribe; no direct calls |
-| Plugin ↔ TabContext | TabContext extended with `pluginId` field | Tab knows which plugin owns it |
-| Plugin ↔ Persistence | Plugin state serialized to localStorage with plugin ID prefix | Each plugin namespaced: `plugin:git:state` |
+### Accessibility
+- Icon sidebar needs aria-label on each button
+- Tab list needs keyboard navigation (existing TabsList has this)
+- Form fields need labels (react-hook-form pattern)
 
-## Build Order Implications
+### Persistence
+- Sidebar view preference: Persist in localStorage via Zustand
+- Open file tabs: Consider persistence (optional, could be session-only)
+- Command form state: No persistence needed (transient)
 
-Based on the architecture, here's the suggested build order with dependencies:
+---
 
-### Phase 1: Foundation (Build First)
-- **PluginDefinition types** - No dependencies, required by everything else
-- **PluginDataSource interface** - No dependencies, core abstraction
-- **PluginRegistry class** - Depends on: PluginDefinition types
-- **PluginContext** - Depends on: PluginRegistry
+## Open Questions for Phase Implementation
 
-### Phase 2: State & UI Infrastructure (Build Second)
-- **createPluginSlice factory** - Depends on: PluginDefinition types
-- **SlotRenderer component** - Depends on: PluginRegistry, PluginContext
-- **PluginErrorBoundary** - Depends on: PluginContext
-- **Enhanced TabContext** - Depends on: existing TabContext, PluginDefinition
+1. **Archived milestones display:** Should archived milestones be collapsible or in a separate section?
+2. **File tab limit:** Should there be a max tabs limit (like existing 20-tab limit for main tabs)?
+3. **Command categories expansion:** The milestone mentions 7 categories but current registry has 3. What are the additional 4?
+4. **Settings icon in sidebar:** Is settings a third sidebar view, or just a shortcut to the settings tab?
 
-### Phase 3: Core Features (Build Third)
-- **Generic TreeView component** - Depends on: PluginDataSource interface
-- **Generic StatusBar component** - Depends on: PluginDataSource interface
-- **Generic ActionButtons** - Depends on: PluginContext (for events)
-
-### Phase 4: First Plugin (Build Fourth - Validation)
-- **Example Plugin (e.g., Git)** - Depends on: All Phase 1-3 components
-- **GitDataSource implementation** - Depends on: PluginDataSource interface
-- **GitStore slice** - Depends on: createPluginSlice factory
-- **GitPanel UI** - Depends on: Core features, GitStore
-
-### Dependency Graph
-```
-PluginDefinition → PluginRegistry → PluginContext → SlotRenderer
-                ↓                                          ↓
-            PluginDataSource → Core Features ← PluginErrorBoundary
-                ↓                   ↓
-            createPluginSlice → Plugin Implementation
-```
+---
 
 ## Sources
 
-**React Architecture Patterns:**
-- [React Architecture Patterns and Best Practices for 2026](https://www.bacancytechnology.com/blog/react-architecture-patterns-and-best-practices)
-- [The Best React Design Patterns to Know About in 2026](https://www.carmatec.com/blog/the-best-react-design-patterns-to-know-about/)
-- [React Design Patterns for 2026 Projects](https://www.sayonetech.com/blog/react-design-patterns/)
-
-**Tauri Plugin Architecture:**
-- [Tauri Plugin Development](https://v2.tauri.app/develop/plugins/)
-- [Tauri Architecture](https://v2.tauri.app/concept/architecture/)
-- [Tauri 2.0 Stable Release](https://v2.tauri.app/blog/tauri-20/)
-
-**VSCode Extension Patterns:**
-- [Building VS Code Extensions in 2026](https://abdulkadersafi.com/blog/building-vs-code-extensions-in-2026-the-complete-modern-guide)
-- [Extension Anatomy - Visual Studio Code](https://code.visualstudio.com/api/get-started/extension-anatomy)
-- [VS Code Extensions: Basic Concepts & Architecture](https://jessvint.medium.com/vs-code-extensions-basic-concepts-architecture-8c8f7069145c)
-
-**Plugin Registry & Component Injection:**
-- [react-registry - Component Registry Library](https://github.com/devnet-io/react-registry)
-- [Building a Component Registry in React](https://medium.com/front-end-weekly/building-a-component-registry-in-react-4504ca271e56)
-- [Registry Pattern - GeeksforGeeks](https://www.geeksforgeeks.org/system-design/registry-pattern/)
-
-**Micro Frontend Architecture:**
-- [Micro Frontends - Martin Fowler](https://martinfowler.com/articles/micro-frontends.html)
-- [Micro Frontend Architecture Guide 2026](https://thinksys.com/development/micro-frontend-architecture/)
-- [5 Frontend Trends That Will Dominate 2026](https://feature-sliced.design/blog/frontend-trends-report)
-
-**State Management & Isolation:**
-- [Zustand Official Documentation](https://context7.com/pmndrs/zustand) - Slice pattern for modular state
-- [Dependency Injection in React](https://blog.logrocket.com/dependency-injection-react/)
-
----
-*Architecture research for plugin-based UI systems in React/Tauri desktop applications*
-*Researched: 2026-01-24*
+- Codebase analysis: `src/stores/gsdStore.ts`, `src/lib/gsd/parsers.ts`, `src/lib/gsd/command-registry.ts`
+- Existing patterns: `src/contexts/TabContext.tsx`, `src/components/ui/tabs.tsx`, `src/components/ui/three-pane.tsx`
+- UI components: `src/components/gsd/GSDPanel.tsx`, `src/components/gsd/GSDCommandPanel.tsx`, `src/components/gsd/GSDPanelContent.tsx`
+- Package dependencies: `react-hook-form`, `zod`, `@hookform/resolvers` (already in package.json)
