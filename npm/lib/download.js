@@ -8,7 +8,7 @@ const ora = require('ora');
 const supportsColor = require('supports-color');
 
 const VERSION = require('../package.json').version;
-const GITHUB_REPO = 'glennin-codes/get-shit-done-cc-ui';
+const GITHUB_REPO = 'Kaenn/get-shit-done-cc-ui';
 
 /**
  * Detect platform and return binary name
