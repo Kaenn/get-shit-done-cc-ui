@@ -3,7 +3,7 @@
 ## Milestones
 
 - **v1.0 MVP** — Phases 1-6 (shipped 2026-01-25) — [Archive](.planning/milestones/v1.0-ROADMAP.md)
-- **v1.1 Context Enhancement** — Phases 7-11 (in progress)
+- **v1.1 Context Enhancement** — Phases 7-11 (complete 2026-01-26)
 
 ## Phases
 
@@ -21,7 +21,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 
 </details>
 
-### v1.1 Context Enhancement (In Progress)
+### v1.1 Context Enhancement (Complete)
 
 **Milestone Goal:** Enhance GSD-UI with better project visualization and smarter command interaction via VSCode-style icon sidebar, state tree, markdown viewer, and command forms.
 
@@ -29,7 +29,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full details.
 - [x] **Phase 8: Markdown Viewer** - Tabbed file viewer with frontmatter and syntax highlighting (completed 2026-01-26)
 - [x] **Phase 9: State Tree** - Hierarchical milestone/phase/plan tree with actions (completed 2026-01-26)
 - [x] **Phase 10: Command Forms** - Smart forms with parameters and flags for GSD commands (completed 2026-01-26)
-- [ ] **Phase 11: npx Installation** - Cross-platform binary distribution via npm for `npx get-shit-done-cc-ui`
+- [x] **Phase 11: npx Installation** - Cross-platform binary distribution via npm for `npx get-shit-done-cc-ui` (completed 2026-01-26)
 
 ## Phase Details
 
@@ -123,11 +123,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Local build validation: build scripts, standalone binary testing
-- [ ] 11-02-PLAN.md — npm package structure: wrapper scripts, lazy download on first run
-- [ ] 11-03-PLAN.md — CI/CD pipeline: GitHub Actions workflow for cross-compilation
-- [ ] 11-04-PLAN.md — npm publishing: automated release workflow with tag triggers
-- [ ] 11-05-PLAN.md — Documentation and polish: README updates, version sync script
+- [x] 11-01-PLAN.md — Local build validation: build scripts, standalone binary testing
+- [x] 11-02-PLAN.md — npm package structure: wrapper scripts, lazy download on first run
+- [x] 11-03-PLAN.md — CI/CD pipeline: GitHub Actions workflow for cross-compilation
+- [x] 11-04-PLAN.md — npm publishing: automated release workflow with tag triggers
+- [x] 11-05-PLAN.md — Documentation and polish: README updates, version sync script
 
 ## Progress
 
@@ -143,4 +143,4 @@ Plans:
 | 8. Markdown Viewer | v1.1 | 4/4 | Complete | 2026-01-26 |
 | 9. State Tree | v1.1 | 3/3 | Complete | 2026-01-26 |
 | 10. Command Forms | v1.1 | 5/5 | Complete | 2026-01-26 |
-| 11. npx Installation | v1.1 | 0/5 | Not started | - |
+| 11. npx Installation | v1.1 | 5/5 | Complete | 2026-01-26 |
