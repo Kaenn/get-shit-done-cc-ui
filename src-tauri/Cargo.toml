@@ -1,6 +1,6 @@
 [package]
 name = "gsd-ui"
-version = "0.2.6"
+version = "0.2.7"
 description = "GUI app and Toolkit for Claude Code"
 authors = ["mufeedvh", "123vviekr"]
 license = "AGPL-3.0"

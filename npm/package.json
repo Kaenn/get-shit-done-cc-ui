@@ -1,6 +1,6 @@
 {
   "name": "get-shit-done-cc-ui",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "GSD-UI - Visual panel for Claude Code terminal workflows",
   "bin": {
     "get-shit-done-cc-ui": "./bin/get-shit-done-cc-ui"
