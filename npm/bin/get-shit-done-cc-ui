@@ -1,12 +1,19 @@
 #!/bin/sh
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BINARY="$SCRIPT_DIR/gsd-ui-web"
+# Resolve the actual package directory (not .bin symlink)
+PACKAGE_DIR="$(dirname "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")")"
+
+# If still in .bin, find the actual package
+if echo "$PACKAGE_DIR" | grep -q "node_modules$"; then
+  PACKAGE_DIR="$PACKAGE_DIR/get-shit-done-cc-ui"
+fi
+
+BINARY="$PACKAGE_DIR/bin/gsd-ui-web"
+DOWNLOAD_SCRIPT="$PACKAGE_DIR/lib/download.js"
 
 # Check if binary exists
 if [ ! -f "$BINARY" ]; then
   echo "Binary not found. Downloading for your platform..."
-  # Run download script via node
-  node "$SCRIPT_DIR/../lib/download.js"
+  node "$DOWNLOAD_SCRIPT"
   DOWNLOAD_EXIT=$?
   if [ $DOWNLOAD_EXIT -ne 0 ]; then
     exit $DOWNLOAD_EXIT
