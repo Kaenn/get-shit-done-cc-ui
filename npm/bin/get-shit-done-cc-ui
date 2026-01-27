@@ -1,0 +1,19 @@
+#!/bin/sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BINARY="$SCRIPT_DIR/gsd-ui-web"
+
+# Check if binary exists
+if [ ! -f "$BINARY" ]; then
+  echo "Binary not found. Downloading for your platform..."
+  # Run download script via node
+  node "$SCRIPT_DIR/../lib/download.js"
+  DOWNLOAD_EXIT=$?
+  if [ $DOWNLOAD_EXIT -ne 0 ]; then
+    exit $DOWNLOAD_EXIT
+  fi
+  echo ""
+  echo "Download complete! Run 'npx get-shit-done-cc-ui' again to start."
+  exit 0
+fi
+
+exec "$BINARY" "$@"

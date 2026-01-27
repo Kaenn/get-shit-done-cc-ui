@@ -19,16 +19,19 @@ jobs:
   build-linux:
     uses: ./.github/workflows/build-linux.yml
     secrets: inherit
-  
+
   build-macos:
     uses: ./.github/workflows/build-macos.yml
     secrets: inherit
-  
+
+  build-web-binaries:
+    uses: ./.github/workflows/build-web-binaries.yml
+    secrets: inherit
 
   # Create release after all builds complete
   create-release:
     name: Create Release
-    needs: [build-linux, build-macos]
+    needs: [build-linux, build-macos, build-web-binaries]
     runs-on: ubuntu-latest
     
     steps:
@@ -65,7 +68,14 @@ jobs:
             cp artifacts/macos-universal/opcode.dmg release-assets/opcode_${{ steps.version.outputs.version }}_macos_universal.dmg || true
             cp artifacts/macos-universal/opcode.app.zip release-assets/opcode_${{ steps.version.outputs.version }}_macos_universal.app.tar.gz || true
           fi
-          
+
+          # Web binaries for npx distribution
+          for platform in linux-x64 darwin-x64 darwin-arm64 win32-x64; do
+            if [ -d "artifacts/$platform" ]; then
+              cp artifacts/$platform/gsd-ui-web-* release-assets/ || true
+            fi
+          done
+
           # Create source code archives
           # Clean version without 'v' prefix for archive names
           CLEAN_VERSION="${{ steps.version.outputs.version }}"
@@ -117,4 +127,12 @@ jobs:
 
             - macOS: Open the `.dmg` and drag opcode to Applications.
             - Linux: `chmod +x` the `.AppImage` and run it, or install the `.deb` on Debian/Ubuntu.
-            
+
+  # Publish npm package AFTER binaries are on GitHub Releases
+  # This ensures postinstall can download binaries immediately
+  publish-npm:
+    name: Publish npm
+    needs: [create-release]
+    uses: ./.github/workflows/publish-npm.yml
+    secrets: inherit
+

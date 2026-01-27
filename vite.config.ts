@@ -9,10 +9,17 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
 
+  // Provide Node.js globals for browser (needed by gray-matter)
+  define: {
+    global: 'globalThis',
+  },
+
   // Path resolution
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // Polyfill Node.js Buffer for browser (needed by gray-matter)
+      buffer: "buffer",
     },
   },
 

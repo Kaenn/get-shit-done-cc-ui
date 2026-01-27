@@ -8,6 +8,16 @@ A visual GSD (Get Shit Done) panel for Claude Code, built as a Tauri desktop app
 
 Terminal-centric workflow enhancement — the GSD panel augments Claude Code without disrupting the terminal-first experience.
 
+## Current Milestone: v1.1 Context Enhancement
+
+**Goal:** Enhance GSD-UI with better project visualization and smarter command interaction.
+
+**Target features:**
+- Left icon bar (VSCode-style) switching between Commands and State views
+- Commands panel with all 27 commands in 7 categories, smart forms with flags
+- State tree showing current milestone hierarchy + archived milestones
+- Right pane state file viewer with tabs, frontmatter, and markdown rendering
+
 ## Requirements
 
 ### Validated
@@ -101,4 +111,4 @@ Fork du projet OPCode (https://github.com/anthropics/claude-code). L'architectur
 | Combos defined by plugin | Flexibilite, chaque plugin connait ses workflows | Pending |
 
 ---
-*Last updated: 2026-01-25 after v1.0 milestone*
+*Last updated: 2026-01-25 after starting v1.1 milestone*

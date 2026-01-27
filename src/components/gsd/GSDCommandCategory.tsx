@@ -4,28 +4,44 @@
  */
 
 import * as Collapsible from '@radix-ui/react-collapsible';
-import { ChevronRight, Clipboard, Zap, Settings } from 'lucide-react';
+import {
+  ChevronRight,
+  FolderPlus,
+  GitBranch,
+  Map,
+  Flag,
+  Zap,
+  Compass,
+  Settings,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGSDStore } from '@/stores/gsdStore';
-import type { GSDCommandDefinition } from '@/lib/gsd/command-registry';
+import type { GSDCommandDefinition, CommandCategory } from '@/lib/gsd/command-registry';
 import { GSDCommandButton } from './GSDCommandButton';
 
 interface GSDCommandCategoryProps {
-  category: string;
+  category: CommandCategory;
   label: string;
   commands: GSDCommandDefinition[];
 }
 
-const CATEGORY_ICONS = {
-  plan: Clipboard,
-  execute: Zap,
-  settings: Settings,
+/**
+ * Category icons mapping for all 7 categories
+ */
+const CATEGORY_ICONS: Record<CommandCategory, typeof FolderPlus> = {
+  'project-setup': FolderPlus,
+  'phase-lifecycle': GitBranch,
+  'roadmap-ops': Map,
+  'milestone-ops': Flag,
+  'quick-work': Zap,
+  navigation: Compass,
+  configuration: Settings,
 };
 
 export function GSDCommandCategory({ category, label, commands }: GSDCommandCategoryProps) {
   const { expandedCategories, toggleCategory, parsedData, phases, showInactiveCommands } = useGSDStore();
   const isExpanded = expandedCategories.has(category);
-  const Icon = CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] || Clipboard;
+  const Icon = CATEGORY_ICONS[category] || FolderPlus;
 
   // Filter commands based on showInactiveCommands setting
   const visibleCommands = showInactiveCommands

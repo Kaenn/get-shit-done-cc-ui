@@ -157,11 +157,29 @@ Menu → MCP Manager → Add Server → Configure
 
 ## 🚀 Installation
 
+### Quick Start with npx
+
+Run instantly with npx (no Rust required):
+
+```bash
+npx get-shit-done-cc-ui
+```
+
+The first run downloads the binary for your platform (~15MB). Subsequent runs start immediately.
+
+#### Supported Platforms
+
+| Platform | Architecture | Status |
+|----------|--------------|--------|
+| Linux | x64 | Supported |
+| macOS | x64 (Intel) | Supported |
+| macOS | arm64 (Apple Silicon) | Supported |
+| Windows | x64 | Supported |
+
 ### Prerequisites
 
+- **Node.js**: 16 or later (for npx)
 - **Claude Code CLI**: Install from [Claude's official site](https://claude.ai/code)
-
-### Release Executables Will Be Published Soon
 
 ## 🔨 Build from Source
 

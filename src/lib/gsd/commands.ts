@@ -6,51 +6,142 @@
 import type { TreeNode } from './tree-transforms';
 
 /**
- * Get the appropriate GSD command for a tree node
- *
- * @param node - Tree node to get command for
- * @param currentPhaseNumber - Current phase number from STATE.md
- * @returns GSD command string or null if no action available
+ * Action link definition for tree nodes
  */
-export function getCommandForNode(
+export interface ActionLink {
+  id: string;
+  label: string;
+  commandId: string;
+  initialValues?: Record<string, string | number>;
+}
+
+/**
+ * Get action links for a milestone node
+ *
+ * @param node - Milestone tree node
+ * @returns Array of action links to show under milestone children
+ */
+export function getMilestoneActionLinks(node: TreeNode): ActionLink[] {
+  if (node.type !== 'milestone' || node.archived) {
+    return [];
+  }
+
+  const links: ActionLink[] = [];
+
+  // Always show add-phase for non-archived milestones
+  links.push({
+    id: 'add-phase',
+    label: '+ add phase...',
+    commandId: 'add-phase',
+  });
+
+  // Check if all phases are finished
+  const allPhasesComplete = node.children?.every(
+    (phase) => phase.status === 'complete'
+  ) ?? false;
+
+  if (allPhasesComplete && node.children && node.children.length > 0) {
+    links.push({
+      id: 'audit-milestone',
+      label: 'audit milestone...',
+      commandId: 'audit-milestone',
+    });
+    links.push({
+      id: 'complete-milestone',
+      label: 'complete milestone...',
+      commandId: 'complete-milestone',
+    });
+  }
+
+  return links;
+}
+
+/**
+ * Get action links for a phase node
+ *
+ * @param node - Phase tree node
+ * @param currentPhaseNumber - Current phase number from STATE.md
+ * @returns Array of action links to show under phase children
+ */
+export function getPhaseActionLinks(
   node: TreeNode,
   currentPhaseNumber: number
-): string | null {
-  // Only plan nodes have commands
-  if (node.type !== 'plan') {
-    return null;
+): ActionLink[] {
+  if (node.type !== 'phase') {
+    return [];
   }
 
-  // Only plans in current phase are actionable
-  const planPhaseMatch = node.id.match(/^plan-(\d+)-/);
-  if (!planPhaseMatch || parseInt(planPhaseMatch[1]) !== currentPhaseNumber) {
-    return null;
+  // Extract phase number from node id
+  const phaseMatch = node.id.match(/^phase-(\d+)$/);
+  if (!phaseMatch) {
+    return [];
+  }
+  const phaseNumber = parseInt(phaseMatch[1]);
+
+  // Only show actions for current phase that is not finished
+  if (phaseNumber !== currentPhaseNumber || node.status === 'complete') {
+    return [];
   }
 
-  // Route based on plan status
-  switch (node.status) {
-    case 'pending':
-      // Plan needs to be created
-      return `/gsd:plan-phase ${currentPhaseNumber}`;
+  const links: ActionLink[] = [];
 
-    case 'in-progress':
-      // Plan is being executed
-      return `/gsd:execute-phase ${currentPhaseNumber}`;
+  // Get phase status from metadata (from backend file checks)
+  const phaseStatus = node.metadata?.phaseStatus;
 
-    case 'complete':
-      // No action needed for complete plans
-      return null;
-
-    default:
-      return null;
+  // discuss-phase: show if CONTEXT.md doesn't have "**Status:** Ready for planning"
+  if (!phaseStatus?.contextReady) {
+    links.push({
+      id: `discuss-phase-${phaseNumber}`,
+      label: 'discuss phase...',
+      commandId: 'discuss-phase',
+      initialValues: { phase: phaseNumber },
+    });
   }
+
+  // plan-phase: show if no PLAN files exist in phase folder
+  if (!phaseStatus?.hasPlans) {
+    links.push({
+      id: `plan-phase-${phaseNumber}`,
+      label: 'plan phase...',
+      commandId: 'plan-phase',
+      initialValues: { phase: phaseNumber },
+    });
+  }
+
+  // execute-phase: show if plans exist AND no VERIFICATION.md file exists
+  if (phaseStatus?.hasPlans && !phaseStatus?.hasVerification) {
+    links.push({
+      id: `execute-phase-${phaseNumber}`,
+      label: 'execute phase...',
+      commandId: 'execute-phase',
+      initialValues: { phase: phaseNumber },
+    });
+  }
+
+  return links;
+}
+
+/**
+ * Find a phase node recursively in the tree (handles milestone > phase > plan structure)
+ */
+function findPhaseNode(nodes: TreeNode[], phaseId: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.id === phaseId) {
+      return node;
+    }
+    if (node.children) {
+      const found = findPhaseNode(node.children, phaseId);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /**
  * Get the next action for the current phase
- * Finds first pending or in-progress plan in current phase
+ * Determines the appropriate command based on phase state
  *
- * @param nodes - Tree data (phase nodes with plan children)
+ * @param nodes - Tree data (milestone nodes with phase children)
  * @param currentPhaseNumber - Current phase number from STATE.md
  * @returns Next action object or null if no action available
  */
@@ -58,43 +149,45 @@ export function getNextAction(
   nodes: TreeNode[],
   currentPhaseNumber: number
 ): { command: string; label: string } | null {
-  console.log('[getNextAction] called with:', {
-    nodesCount: nodes.length,
-    nodeIds: nodes.map(n => n.id),
-    currentPhaseNumber
-  });
+  // Find current phase node (recursively search through milestones)
+  const currentPhase = findPhaseNode(nodes, `phase-${currentPhaseNumber}`);
 
-  // Find current phase node
-  const currentPhase = nodes.find(
-    (n) => n.id === `phase-${currentPhaseNumber}`
-  );
-
-  console.log('[getNextAction] currentPhase:', currentPhase ? {
-    id: currentPhase.id,
-    childrenCount: currentPhase.children?.length
-  } : null);
-
-  if (!currentPhase || !currentPhase.children) {
-    console.log('[getNextAction] no current phase or no children');
+  if (!currentPhase) {
     return null;
   }
 
-  // Find first plan that needs action (pending or in-progress)
-  for (const plan of currentPhase.children) {
-    console.log('[getNextAction] checking plan:', {
-      id: plan.id,
-      type: plan.type,
-      status: plan.status
-    });
-    const command = getCommandForNode(plan, currentPhaseNumber);
-    if (command) {
-      const label = getCommandLabel(command);
-      console.log('[getNextAction] found action:', { command, label });
-      return { command, label };
-    }
+  // If phase is complete, no action needed
+  if (currentPhase.status === 'complete') {
+    return null;
   }
 
-  console.log('[getNextAction] no actionable plans found');
+  // Get phase status from metadata (from backend file checks)
+  const phaseStatus = currentPhase.metadata?.phaseStatus;
+
+  // Priority 1: discuss if context not ready
+  if (!phaseStatus?.contextReady) {
+    return {
+      command: `/gsd:discuss-phase ${currentPhaseNumber}`,
+      label: `Discuss Phase ${currentPhaseNumber}`,
+    };
+  }
+
+  // Priority 2: plan if no plans exist
+  if (!phaseStatus?.hasPlans) {
+    return {
+      command: `/gsd:plan-phase ${currentPhaseNumber}`,
+      label: `Plan Phase ${currentPhaseNumber}`,
+    };
+  }
+
+  // Priority 3: execute if plans exist but no verification
+  if (phaseStatus?.hasPlans && !phaseStatus?.hasVerification) {
+    return {
+      command: `/gsd:execute-phase ${currentPhaseNumber}`,
+      label: `Execute Phase ${currentPhaseNumber}`,
+    };
+  }
+
   return null;
 }
 

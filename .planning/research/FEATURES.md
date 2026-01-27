@@ -1,268 +1,387 @@
-# Feature Research
+# Features Research: v1.1 UI Enhancements
 
-**Domain:** Plugin-based UI systems for desktop applications (CLI tool extensions)
-**Researched:** 2026-01-24
-**Confidence:** MEDIUM-HIGH
-
-## Feature Landscape
-
-### Table Stakes (Users Expect These)
-
-Features users assume exist. Missing these = product feels incomplete or broken.
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Plugin registration system** | Standard in all plugin architectures (VS Code, Obsidian, Figma) | MEDIUM | Config-based declaration (package.json/manifest pattern). Must define plugin identity, version, dependencies |
-| **Enable/disable per plugin** | Users expect granular control over extensions | LOW | Boolean toggle in settings UI. Strapi, VS Code, WordPress all provide this |
-| **Plugin discovery/listing** | Users need to know what plugins are available and active | LOW | Simple UI showing installed plugins, status, and basic metadata |
-| **Configuration/settings per plugin** | Every modern plugin system has per-plugin settings | MEDIUM | Plugin declares settings schema, core renders UI. VS Code uses contributes.configuration pattern |
-| **Contribution points** | Plugins need defined extension points to hook into | HIGH | Core defines where plugins can extend (views, commands, menus, panels). VS Code has 32+ contribution points |
-| **Side panel/view registration** | Standard UI extension point for contextual information | MEDIUM | Plugins register custom views in sidebars/panels. VS Code uses contributes.views + contributes.viewsContainers |
-| **Command registration** | Plugins need to expose actions users can trigger | MEDIUM | Commands with ID, label, keyboard shortcuts. Exposed in command palette or buttons |
-| **Icon/visual identity** | Users identify plugins visually in UI | LOW | Plugin provides icon, shown in panels, settings, command palette |
-| **Data isolation** | Each plugin's data must not interfere with others | MEDIUM | Scoped storage per plugin. Figma uses figma.clientStorage, VS Code uses workspace.getConfiguration |
-| **Error boundaries** | Plugin crashes shouldn't crash the entire app | MEDIUM | Sandboxing/isolation. VS Code runs extensions in separate Extension Host process |
-| **Basic lifecycle hooks** | Plugins need initialization/cleanup control | MEDIUM | onActivate, onDeactivate, onConfigChange. Activation events define when plugin loads |
-
-### Differentiators (Competitive Advantage)
-
-Features that set the product apart. Not required, but valuable for specific use cases.
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Combo actions (auto-chain commands)** | Workflow automation - execute multiple commands in sequence | MEDIUM | GSD-specific need. User clicks once, multiple commands execute. Reduces cognitive load |
-| **Pre-prompted commands** | Commands with preset parameters for common workflows | LOW | Template pattern: command + default args. Speeds up repetitive tasks |
-| **Data source abstraction** | Plugins can use different backends (files, SQLite, HTTP) without core changes | HIGH | Adapter pattern for data sources. Enables flexible plugin implementations |
-| **Tree view with custom nodes** | Hierarchical data visualization with plugin-defined node types | MEDIUM | Generic tree component, plugins provide data + render logic. GSD shows milestones→phases→plans |
-| **Status indicators/badges** | Visual state representation (pending, in-progress, complete) | LOW | Color-coded badges. Common in task management, useful for GSD workflow tracking |
-| **Action buttons in tree nodes** | Contextual actions directly on tree items (no modal needed) | LOW | "Next Up" buttons in GSD. Reduces clicks, keeps users in flow |
-| **Webview/custom UI** | Plugins can render fully custom UI beyond standard components | HIGH | VS Code webviews, Figma iframe pattern. Max flexibility but security complexity |
-| **Keyboard shortcuts per plugin** | Plugin-specific hotkeys for power users | LOW | VS Code contributes.keybindings. Improves productivity for frequent tasks |
-| **Welcome content for empty views** | Onboarding guidance when plugin first activated | LOW | VS Code contributes.viewsWelcome. Reduces friction for new users |
-| **Plugin-specific themes/styling** | Plugins can customize appearance within their views | MEDIUM | Scoped CSS or theme tokens. Maintains brand identity within plugin |
-| **Cross-plugin communication** | Plugins can expose APIs for other plugins | HIGH | VS Code extensions can depend on each other. Creates ecosystem, but adds coupling risk |
-| **Secret/credential storage** | Secure storage for API keys, tokens | MEDIUM | Obsidian added SecretStorage API in Jan 2026. Prevents hardcoding credentials |
-| **Setting groups/organization** | Settings UI organized into logical sections | LOW | Obsidian added SettingGroup in Jan 2026. Improves UX for complex plugins |
-| **Context menus** | Right-click actions in plugin views | MEDIUM | VS Code contributes.menus. Familiar desktop app pattern |
-| **Drag & drop support** | Visual reordering, file uploads in plugin views | MEDIUM | Fancytree supports drag-drop for tree reorganization. Modern UX expectation |
-
-### Anti-Features (Commonly Requested, Often Problematic)
-
-Features that seem good but create problems. Deliberately avoid for v1.
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Plugin marketplace/discovery** | Users want to browse and install plugins easily | Requires server infrastructure, moderation, update mechanism, security review. Massive scope increase | Manual plugin installation for v1. Focus on architecture first, marketplace later |
-| **Hot reload/live updates** | Developers want fast iteration during plugin development | Complex invalidation logic, memory leaks, state corruption risks. VS Code requires restart for many changes | Require app restart to activate plugin changes. Simpler, more reliable |
-| **Plugin sandboxing with full isolation** | Security-conscious users want plugins untrusted by default | Requires VM/container per plugin, IPC overhead, complex permission model. Figma's sandbox is restrictive | Trust-based model for v1. Only load explicitly installed plugins. Add permissions later |
-| **Version compatibility matrix** | Support multiple plugin API versions simultaneously | Massive maintenance burden, confusing for developers. Semantic versioning helps but doesn't solve it | Single API version for v1. Break compatibility deliberately, document migration |
-| **Plugin dependencies/registry** | Plugins can require other plugins as dependencies | Circular dependency hell, version conflicts (npm-style nightmares). Increases coupling | Plugins are self-contained for v1. No dependencies on other plugins |
-| **Real-time collaboration on plugin data** | Multiple users editing same plugin data simultaneously | CRDT/OT complexity, conflict resolution, network layer. Way beyond v1 scope | Single-user only for v1. Plugin data is local to machine |
-| **Backward compatibility guarantee** | Never break plugin APIs across versions | Becomes technical debt anchor. Can't evolve architecture without legacy baggage | Explicitly no backward compatibility promise for v1. Move fast, document breaking changes |
-| **Plugin permissions/capabilities system** | Fine-grained control over what plugins can access | Complex permission model, confusing UX (Android permission fatigue). Over-engineering for v1 | All-or-nothing trust for v1. Plugin gets full access when enabled |
-| **Plugin analytics/telemetry** | Track plugin usage, errors, performance | Privacy concerns, data collection infrastructure, GDPR compliance. Scope creep | No built-in plugin analytics for v1. Plugins can add their own if needed |
-| **Multi-language plugin support** | Write plugins in any language (Python, Go, Rust, etc.) | Requires polyglot runtime, build tooling, packaging complexity. TypeScript-only is simpler | TypeScript-only for v1. Single language = simpler tooling, better DX |
-
-## Feature Dependencies
-
-```
-Plugin Registration System
-    ├──requires──> Configuration Schema (plugins declare settings)
-    ├──requires──> Lifecycle Hooks (activation/deactivation)
-    └──enables──> Enable/Disable Toggle (need registration to toggle)
-
-Contribution Points
-    ├──requires──> Plugin Registration (plugins must register before contributing)
-    ├──enables──> Side Panel Registration (panels are contribution points)
-    ├──enables──> Command Registration (commands are contribution points)
-    └──enables──> View Registration (views are contribution points)
-
-Side Panel Registration
-    ├──requires──> Contribution Points (panels declared as contributions)
-    ├──enhances──> Tree View (panels often contain trees)
-    └──enhances──> Custom UI (panels display plugin-specific UI)
-
-Command Registration
-    ├──requires──> Contribution Points (commands declared as contributions)
-    ├──enhances──> Action Buttons (buttons trigger commands)
-    ├──enhances──> Pre-prompted Commands (templates built on commands)
-    └──enhances──> Combo Actions (combos chain commands)
-
-Data Source Abstraction
-    ├──enables──> Plugin Flexibility (plugins choose data backend)
-    └──independent──> UI Features (data layer separate from presentation)
-
-Tree View
-    ├──requires──> Side Panel (trees displayed in panels)
-    ├──enhances──> Status Indicators (nodes show status)
-    └──enhances──> Action Buttons (nodes have contextual actions)
-
-Combo Actions
-    ├──requires──> Command Registration (combos execute commands)
-    ├──requires──> Enable/Disable per Combo (user controls combos)
-    └──conflicts──> Plugin Sandboxing (combos need command execution access)
-```
-
-### Dependency Notes
-
-- **Plugin Registration is foundational:** Almost all other features depend on plugins being registered first
-- **Contribution Points are core abstraction:** Define the contract between core and plugins. Must be designed before building specific extensions
-- **Data Source Abstraction is orthogonal:** UI features don't care about data backend. Keep them separate
-- **Combo Actions require command infrastructure:** Can't chain commands that don't exist. Build commands first
-- **Sandboxing conflicts with automation:** Strict isolation makes combo actions harder. Choose trust model carefully
-
-## MVP Definition
-
-### Launch With (v1)
-
-Minimum viable product — what's needed to validate the plugin architecture with GSD.
-
-- [x] **Plugin registration via config** — Plugins declare identity, version, contribution points in manifest/config file
-- [x] **Enable/disable per plugin** — Settings UI with toggle switches for each installed plugin
-- [x] **Side panel contribution point** — Plugins register custom panels in sidebar
-- [x] **Tree view component** — Generic tree with expand/collapse, plugin provides data structure
-- [x] **Command registration** — Plugins declare commands, core exposes them in UI
-- [x] **Action buttons in tree** — Nodes can have clickable buttons (e.g., "Next Up" in GSD)
-- [x] **Status indicators** — Visual badges for node states (pending/in-progress/complete)
-- [x] **Pre-prompted commands** — Commands with default arguments for common workflows
-- [x] **Combo actions** — User-defined command chains (e.g., /clear then /gsd:progress)
-- [x] **Data source abstraction** — Interface for plugins to load data (filesystem adapter for GSD)
-- [x] **Basic lifecycle** — onActivate/onDeactivate hooks for plugin initialization
-- [x] **Error boundaries** — Plugin errors don't crash app, show error state in plugin panel
-
-### Add After Validation (v1.x)
-
-Features to add once core architecture is proven with GSD plugin.
-
-- [ ] **Keyboard shortcuts** — Add when second plugin needs custom hotkeys
-- [ ] **Context menus** — Add when tree actions outgrow inline buttons
-- [ ] **Welcome content** — Add when plugins need onboarding (contributes.viewsWelcome pattern)
-- [ ] **Setting groups** — Add when plugins have >5 settings (Obsidian SettingGroup pattern)
-- [ ] **Custom icons per plugin** — Add when visual identity matters for multi-plugin UX
-- [ ] **Plugin metadata display** — Version, author, description in settings. Add when managing multiple plugins
-- [ ] **Drag & drop in trees** — Add if GSD or future plugin needs reordering (not for v1 read-only)
-- [ ] **Webview support** — Add if plugin needs fully custom UI beyond standard components
-- [ ] **Secret storage** — Add when plugin needs API credentials (Obsidian SecretStorage pattern)
-
-### Future Consideration (v2+)
-
-Features to defer until plugin ecosystem is established.
-
-- [ ] **Plugin marketplace** — Requires server, moderation, versioning infrastructure
-- [ ] **Hot reload** — Developer convenience, complex to implement correctly
-- [ ] **Plugin sandboxing** — Security model adds significant complexity
-- [ ] **Version compatibility** — Support multiple API versions simultaneously
-- [ ] **Plugin dependencies** — Let plugins require other plugins (npm-style)
-- [ ] **Cross-plugin APIs** — Plugins expose services to other plugins
-- [ ] **Multi-language support** — Python, Go, Rust plugins (beyond TypeScript)
-- [ ] **Plugin permissions** — Fine-grained capability control
-- [ ] **Plugin analytics** — Built-in usage tracking
-- [ ] **Real-time collaboration** — Multi-user plugin data editing
-
-## Feature Prioritization Matrix
-
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Plugin registration | HIGH | MEDIUM | P1 |
-| Enable/disable toggle | HIGH | LOW | P1 |
-| Side panel contribution | HIGH | MEDIUM | P1 |
-| Command registration | HIGH | MEDIUM | P1 |
-| Tree view component | HIGH | MEDIUM | P1 |
-| Data source abstraction | HIGH | HIGH | P1 |
-| Action buttons | HIGH | LOW | P1 |
-| Status indicators | MEDIUM | LOW | P1 |
-| Combo actions | HIGH (GSD-specific) | MEDIUM | P1 |
-| Pre-prompted commands | MEDIUM | LOW | P1 |
-| Error boundaries | HIGH | MEDIUM | P1 |
-| Lifecycle hooks | MEDIUM | MEDIUM | P1 |
-| Configuration schema | MEDIUM | MEDIUM | P1 |
-| Keyboard shortcuts | MEDIUM | LOW | P2 |
-| Context menus | MEDIUM | MEDIUM | P2 |
-| Welcome content | LOW | LOW | P2 |
-| Setting groups | LOW | LOW | P2 |
-| Custom icons | LOW | LOW | P2 |
-| Metadata display | LOW | LOW | P2 |
-| Drag & drop | LOW | MEDIUM | P2 |
-| Webview support | MEDIUM | HIGH | P2 |
-| Secret storage | MEDIUM | MEDIUM | P2 |
-| Plugin marketplace | HIGH | VERY HIGH | P3 |
-| Hot reload | MEDIUM | HIGH | P3 |
-| Sandboxing | HIGH (security) | VERY HIGH | P3 |
-| Version compatibility | MEDIUM | HIGH | P3 |
-| Plugin dependencies | LOW | HIGH | P3 |
-| Cross-plugin APIs | LOW | HIGH | P3 |
-| Multi-language support | LOW | VERY HIGH | P3 |
-| Permission system | MEDIUM | HIGH | P3 |
-| Plugin analytics | LOW | MEDIUM | P3 |
-| Real-time collaboration | LOW | VERY HIGH | P3 |
-
-**Priority key:**
-- P1: Must have for launch — validates core plugin architecture with GSD
-- P2: Should have when possible — improves UX but not blocking
-- P3: Nice to have for future — ecosystem features, defer until multi-plugin need proven
-
-## Competitor Feature Analysis
-
-| Feature | VS Code Extensions | Obsidian Plugins | Figma Plugins | Our Approach (GSD-UI) |
-|---------|-------------------|------------------|---------------|----------------------|
-| **Registration** | package.json manifest | manifest.json | manifest.json | Config-based (JSON/TypeScript) |
-| **Contribution Points** | 32+ defined points | API-based (no manifest contributions) | Limited to UI + data | Start with 5 core points: views, commands, panels, settings, combos |
-| **Side Panels** | contributes.views + viewsContainers | Workspace leaves, ribbons | Sidebar UI in iframe | contributes.panels for plugin sidebars |
-| **Commands** | contributes.commands + API | Command API | No command palette | contributes.commands + combo support |
-| **Settings** | contributes.configuration | Plugin settings tab | No built-in settings UI | contributes.configuration with UI auto-generation |
-| **Tree Views** | TreeView API with data providers | No built-in tree | No built-in tree | Generic TreeView component, plugins provide data |
-| **Data Storage** | workspace.getConfiguration, globalState | Plugin data folder + localStorage | figma.clientStorage (limited) | Abstracted data sources (file/SQLite/custom) |
-| **Lifecycle** | activate/deactivate events | onload/onunload | Run/close (no persistence) | onActivate/onDeactivate hooks |
-| **Sandboxing** | Extension Host process isolation | No sandboxing (full Node.js access) | Strict sandbox (no browser APIs except iframe) | No sandboxing for v1 (trust model) |
-| **UI Customization** | Webviews for custom HTML | Full DOM access | iframe with postMessage | Standard components for v1, webviews later |
-| **Hot Reload** | Reload window required | Live reload during dev | No hot reload | Restart required for v1 |
-| **Marketplace** | VS Code Marketplace (official) | Community plugins list | Plugin Hub | No marketplace for v1 |
-| **Multi-language** | TypeScript/JavaScript only | JavaScript only | TypeScript/JavaScript only | TypeScript only for v1 |
-| **Error Handling** | Extension Host crash recovery | Console errors, no isolation | Sandbox errors isolated | React Error Boundaries per plugin |
-
-## GSD Plugin Requirements (Reference)
-
-Since GSD is the first plugin, its requirements validate the architecture:
-
-**Must support:**
-- Reading `.planning/` directory structure (filesystem data source)
-- Tree hierarchy: Milestones → Phases → Plans (3-level tree)
-- Status badges: pending, in-progress, complete (status indicators)
-- "Next Up" action buttons (action buttons in tree)
-- Command registration: `/gsd:progress`, `/gsd:plan-phase`, etc. (command contribution)
-- Combo definition: "Clear + Progress" (combo actions)
-- Enable/disable combos per user (settings UI)
-- Pre-prompted commands: `/gsd:plan-phase {phase_number}` (command templates)
-
-**GSD validates these generic features:**
-- Filesystem data source adapter (can be replaced with SQLite/HTTP later)
-- Tree view with custom node rendering
-- Status indicator system
-- Action button system
-- Command registration and execution
-- Combo chaining mechanism
-- Settings schema and UI generation
-
-## Sources
-
-### High Confidence (Official Documentation)
-- [VS Code Extension API - Contribution Points](https://code.visualstudio.com/api/references/contribution-points) — Official API reference, verified Jan 2026
-- [VS Code Extension Capabilities](https://code.visualstudio.com/api/extension-capabilities/overview) — Common patterns for extensions
-- [Tauri Plugin Architecture](https://v2.tauri.app/concept/architecture/) — Official Tauri v2 architecture docs
-- [Figma Plugin Architecture](https://www.figma.com/blog/how-we-built-the-figma-plugin-system/) — Official Figma engineering blog
-
-### Medium Confidence (Verified Web Sources)
-- [Building VS Code Extensions in 2026: The Complete Guide](https://abdulkadersafi.com/blog/building-vs-code-extensions-in-2026-the-complete-modern-guide) — Modern best practices, 2026
-- [Obsidian Release Notes - January 2026](https://releasebot.io/updates/obsidian) — SettingGroup and SecretStorage APIs added
-- [Strapi Plugin Configuration](https://docs-v4.strapi.io/dev-docs/configurations/plugins) — Enable/disable pattern example
-- [Desktop Development 2026](https://www.designrush.com/agency/web-development-companies/trends/desktop-development) — Modern desktop app trends
-
-### Low Confidence (General Web Research)
-- [Plugin Architecture Definition (PDF)](https://cs.uwaterloo.ca/~m2nagapp/courses/CS446/1195/Arch_Design_Activity/PlugIn.pdf) — Academic pattern overview
-- [Best Desktop Automation Tools 2026](https://testgrid.io/blog/desktop-automation-tools/) — Industry survey
-- [Tree View API Resources](https://www.jqueryscript.net/blog/Best-Tree-View-Plugins-jQuery.html) — UI component patterns
+**Domain:** Desktop application UI components for workflow visualization
+**Researched:** 2026-01-25
+**Milestone:** v1.1 Context Enhancement
+**Confidence:** HIGH (based on official documentation and industry standards)
 
 ---
-*Feature research for: Plugin-based UI systems for desktop CLI tools*
-*Researched: 2026-01-24*
-*Confidence: MEDIUM-HIGH (VS Code/Figma verified, some patterns inferred)*
+
+## Icon Sidebar (Activity Bar)
+
+VSCode-style vertical icon bar for switching between Commands and State views.
+
+### Table Stakes
+
+| Feature | Description | Complexity | Dependency |
+|---------|-------------|------------|------------|
+| **Vertical icon strip** | Fixed-width bar (48-56px) on left edge with vertically stacked icons | LOW | None |
+| **Icon-only display** | 24x24px icons, no text labels in collapsed state | LOW | Icon library (lucide-react) |
+| **Single selection** | Only one view active at a time, clicking switches views | LOW | Panel state management |
+| **Active state indicator** | Visual distinction for active icon (left border, background highlight, or both) | LOW | CSS |
+| **Hover tooltips** | Icon name/description on hover since no visible labels | LOW | Existing tooltip component |
+| **Consistent icon style** | All icons match visual style (stroke weight, size, fill vs outline) | LOW | Design system |
+| **Keyboard navigation** | Arrow keys navigate between icons, Enter activates | MEDIUM | Focus management |
+| **Toggle behavior** | Clicking active icon toggles sidebar visibility (hide/show) | LOW | Panel collapse state |
+
+### Differentiators
+
+| Feature | Description | Complexity | Value |
+|---------|-------------|------------|-------|
+| **Badge indicators** | Notification badges on icons (e.g., pending tasks count) | LOW | Status awareness without switching views |
+| **Icon reordering** | Drag-drop to customize icon order | MEDIUM | Personalization |
+| **Collapsible activity bar** | Hide entire bar for maximum terminal space | LOW | Screen real estate on small displays |
+| **Secondary sidebar support** | Icons can open views in left or right sidebar | MEDIUM | Flexible layout (VSCode pattern) |
+| **Context-aware icons** | Icons change based on project state (e.g., warning icon when blocked) | MEDIUM | Proactive status communication |
+| **Keyboard shortcuts per view** | Cmd/Ctrl+1,2,3 to switch views directly | LOW | Power user efficiency |
+
+### Anti-Features (Do Not Build)
+
+| Feature | Reason |
+|---------|--------|
+| **Text labels on icons** | Wastes horizontal space, VSCode deliberately uses icon-only |
+| **Multi-select views** | Creates UX confusion, keep single-view paradigm |
+| **Animated icon transitions** | Distracting, slows interaction, not in VSCode |
+| **Custom icon upload** | Over-engineering for v1.1, hard-coded icons sufficient |
+| **Drag to external windows** | Desktop window management complexity, out of scope |
+
+### Implementation Notes
+
+- VSCode activity bar width: 48px with 24x24 icons
+- Active indicator: 2px left border in accent color
+- Icon spacing: 8-12px vertical gap
+- Position: Leftmost element, before any sidebars
+- Accessibility: Icons need `aria-label` since no visible text
+
+**Sources:**
+- [VSCode Activity Bar UX Guidelines](https://code.visualstudio.com/api/ux-guidelines/activity-bar)
+- [VSCode UX Guidelines Overview](https://code.visualstudio.com/api/ux-guidelines/overview)
+
+---
+
+## Smart Command Forms
+
+Command palette enhanced with parameter/flag input forms.
+
+### Table Stakes
+
+| Feature | Description | Complexity | Dependency |
+|---------|-------------|------------|------------|
+| **Command search** | Fuzzy search across command names and descriptions | LOW | Existing SlashCommandPicker |
+| **Keyboard navigation** | Up/Down arrows, Enter to select, Escape to close | LOW | Existing implementation |
+| **Parameter detection** | Parse command schema to identify required/optional params | MEDIUM | GSD command reference |
+| **Inline parameter input** | Text fields for arguments (phase number, description, etc.) | MEDIUM | Form components |
+| **Flag toggles** | Boolean switches for flags like `--gaps-only`, `--research` | LOW | Switch component |
+| **Validation feedback** | Show errors for invalid inputs before execution | MEDIUM | Validation logic |
+| **Clear defaults** | Pre-fill common values where applicable | LOW | Command schema |
+| **Submit shortcut** | Cmd/Ctrl+Enter to execute command | LOW | Key binding |
+
+### Differentiators
+
+| Feature | Description | Complexity | Value |
+|---------|-------------|------------|-------|
+| **Progressive disclosure** | Show basic fields first, expand for advanced options/flags | MEDIUM | Reduces overwhelm for simple commands |
+| **Argument suggestions** | Autocomplete for known values (phase numbers from STATE.md) | MEDIUM | Faster input, fewer errors |
+| **Command preview** | Show full command string as user fills form | LOW | Transparency, learning tool |
+| **Recently used commands** | Quick access to last 5-10 executed commands | LOW | Speed for repetitive workflows |
+| **Parameter persistence** | Remember last-used values for each command | LOW | Workflow continuity |
+| **Grouped by category** | Commands organized by GSD workflow stage | LOW | Better discoverability |
+| **Interactive flag** | Indicate which commands are interactive vs automatic | LOW | Set user expectations |
+
+### Anti-Features (Do Not Build)
+
+| Feature | Reason |
+|---------|--------|
+| **Custom command creation UI** | GSD commands are defined in system prompts, not user-editable |
+| **Command scripting/macros** | Complexity explosion, combos already handle chaining |
+| **AI-powered command suggestions** | Adds latency, unclear value for known command set |
+| **Voice input for parameters** | Accessibility feature but out of scope for v1.1 |
+| **Multi-command forms** | One command at a time, use combos for sequences |
+
+### Command Schema Reference
+
+Based on GSD workflow reference, commands have these parameter patterns:
+
+```
+Required argument: /gsd:execute-phase <phase-number>
+Optional argument: /gsd:verify-work [phase]
+String argument:   /gsd:add-phase <description>
+Enum argument:     /gsd:set-profile <quality|balanced|budget>
+Multiple args:     /gsd:insert-phase <after> <description>
+
+Flags:
+  --gaps-only     Boolean, no value
+  --research      Boolean, no value
+  --skip-research Boolean, no value
+  --gaps          Boolean, no value
+  --skip-verify   Boolean, no value
+```
+
+### Form Field Types
+
+| Arg Type | Input Component | Example |
+|----------|-----------------|---------|
+| `<phase-number>` | Number input with up/down | 1, 2, 3.1 |
+| `[phase]` | Optional number, show placeholder | "Current phase" |
+| `<description>` | Text input | "Add export feature" |
+| `<profile>` | Select dropdown | quality, balanced, budget |
+| `--flag` | Toggle switch | On/Off |
+
+**Sources:**
+- [react-cmdk](https://react-cmdk.com/) - Command palette patterns
+- [React Aria Command Palette](https://react-spectrum.adobe.com/react-aria/examples/command-palette.html) - Accessible patterns
+- [XState Command Palette](https://franknoirot.co/posts/xstate-command-palette.mdx/) - Parameter forms pattern
+
+---
+
+## State Tree (Full Project Hierarchy)
+
+Tree view showing milestone > phase > plan hierarchy with status.
+
+### Table Stakes
+
+| Feature | Description | Complexity | Dependency |
+|---------|-------------|------------|------------|
+| **3-level hierarchy** | Milestone > Phase > Plan nesting | LOW | Existing 2-level extended |
+| **Expand/collapse** | Chevron icons to show/hide children | LOW | Existing implementation |
+| **Status indicators** | Visual badges: pending, in-progress, complete | LOW | Existing implementation |
+| **Current phase highlight** | Visual distinction for active phase | LOW | STATE.md parsing |
+| **Progress indicators** | Per-phase completion percentage | LOW | Existing implementation |
+| **Click to view** | Click node to show details in right pane | LOW | Panel communication |
+| **Keyboard navigation** | Arrow keys for tree traversal | MEDIUM | ARIA tree pattern |
+| **Archived milestones** | Collapsible section for completed milestones | LOW | MILESTONES.md parsing |
+
+### Differentiators
+
+| Feature | Description | Complexity | Value |
+|---------|-------------|------------|-------|
+| **Inline actions** | "Next Up" buttons directly on nodes | LOW | Existing, extend to all levels |
+| **Phase duration estimates** | Show time/complexity hints per phase | LOW | Metadata display |
+| **Plan file preview** | Hover to see plan summary | MEDIUM | Tooltip with content |
+| **Blocked indicator** | Visual flag when phase has blockers | LOW | CONTEXT.md parsing |
+| **Quick navigation** | Cmd+Click to jump to file in viewer | LOW | Cross-component coordination |
+| **Filter by status** | Show only pending/in-progress items | LOW | Filter UI |
+| **Search within tree** | Find phases/plans by name | LOW | Local search |
+
+### Anti-Features (Do Not Build)
+
+| Feature | Reason |
+|---------|--------|
+| **Drag-drop reordering** | GSD phases have fixed order, not user-rearrangeable |
+| **Inline editing** | Read-only view; Claude Code manages .planning files |
+| **Multi-select** | No batch operations needed on tree items |
+| **Virtual scrolling** | Overkill for <100 nodes typical in GSD projects |
+| **Tree minimap** | Over-engineered for shallow hierarchies |
+| **Node icons by type** | All nodes are same type (workflow state), icons add noise |
+
+### Tree Node Structure
+
+```
+v1.1 (Milestone)
+  Phase 1: Foundation [complete] [2/2]
+    01-01-CONTEXT.md
+    01-01-PLAN.md
+    01-01-SUMMARY.md
+  Phase 2: Visualization [in-progress] [1/3]
+    02-01-CONTEXT.md [viewed]
+    02-01-PLAN.md [current]
+    02-01-SUMMARY.md [pending]
+  Phase 3: Interactivity [pending] [0/4]
+    ...
+
+Archived
+  v1.0 MVP (collapsed by default)
+```
+
+### Accessibility Requirements
+
+- `role="tree"` on container
+- `role="treeitem"` on each node
+- `aria-expanded` for collapsible nodes
+- `aria-selected` for current selection
+- `aria-level` for nesting depth
+- Focus visible on navigation
+
+**Sources:**
+- [W3C WAI Tree View Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/) - Accessibility requirements
+- [GitHub Primer Tree View](https://primer.style/components/tree-view/) - Design patterns
+- [Status Indicator UX Best Practices](https://www.koruux.com/blog/ux-best-practices-designing-status-indicators/) - Visual design
+
+---
+
+## Markdown Viewer (State File Viewer)
+
+Right pane viewer for .planning markdown files with frontmatter.
+
+### Table Stakes
+
+| Feature | Description | Complexity | Dependency |
+|---------|-------------|------------|------------|
+| **Markdown rendering** | Headers, lists, code blocks, links, emphasis | LOW | react-markdown or similar |
+| **YAML frontmatter parsing** | Extract and display metadata separately | LOW | gray-matter library |
+| **Frontmatter display** | Structured metadata view (key-value pairs) | LOW | UI component |
+| **Syntax highlighting** | Code blocks with language-aware highlighting | LOW | rehype-highlight/prism |
+| **File path display** | Show which file is being viewed | LOW | Header UI |
+| **Scroll position memory** | Remember scroll position per file | LOW | Local state |
+| **Auto-refresh** | Update when file changes on disk | LOW | Polling/file watch |
+| **Copy code blocks** | Button to copy code snippets | LOW | Clipboard API |
+
+### Differentiators
+
+| Feature | Description | Complexity | Value |
+|---------|-------------|------------|-------|
+| **Tabbed viewing** | Multiple files open in tabs | MEDIUM | Compare files, context switching |
+| **Status-aware styling** | Different header color based on phase status | LOW | Visual context |
+| **Mermaid diagram rendering** | Render flowcharts from markdown | MEDIUM | GSD uses Mermaid in docs |
+| **Collapsible sections** | Fold long sections for overview | LOW | Content navigation |
+| **Search within file** | Cmd+F to find text in current file | LOW | Standard expectation |
+| **Link following** | Click internal links to navigate to referenced files | MEDIUM | .planning file cross-references |
+| **Quick actions** | Buttons to run commands mentioned in file | HIGH | Context-aware automation |
+| **Diff view** | Compare current vs previous version | HIGH | Change tracking |
+
+### Anti-Features (Do Not Build)
+
+| Feature | Reason |
+|---------|--------|
+| **Edit mode** | Read-only viewer; Claude Code manages files |
+| **Export to PDF** | Out of scope for workflow tool |
+| **Comments/annotations** | No collaboration features in v1 |
+| **Version history browser** | Git integration is separate concern |
+| **Split view** | Complexity for limited value in v1.1 |
+| **Custom themes** | Use system theme, no per-file styling |
+
+### Frontmatter Schema (GSD Files)
+
+```yaml
+# Typical PLAN.md frontmatter
+---
+phase: 2
+plan: 1
+title: "Implement tree view component"
+status: in-progress
+created: 2026-01-25
+wave: 1
+depends_on: ["01-01-PLAN.md"]
+---
+```
+
+Display as structured header:
+```
+Phase 2 / Plan 1              [in-progress]
+"Implement tree view component"
+Created: Jan 25, 2026
+Wave 1 | Depends on: Phase 1 Plan 1
+```
+
+### Markdown Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| Headers (h1-h6) | YES | Styled with hierarchy |
+| Bold/Italic | YES | Standard emphasis |
+| Lists (ul/ol) | YES | Nested supported |
+| Code blocks | YES | With syntax highlighting |
+| Inline code | YES | Monospace styling |
+| Links | YES | Open in default browser |
+| Images | LIMITED | Local paths only, no external |
+| Tables | YES | GSD uses tables in docs |
+| Blockquotes | YES | Callout styling |
+| Horizontal rules | YES | Section separators |
+| Mermaid | OPTIONAL | Flowcharts for GSD diagrams |
+| Math/LaTeX | NO | Not used in GSD |
+| HTML | NO | Security risk, pure markdown only |
+
+**Sources:**
+- [react-markdown](https://github.com/remarkjs/react-markdown) - Markdown rendering
+- [remark-frontmatter](https://github.com/remarkjs/remark-frontmatter) - YAML parsing
+- [Strapi Markdown Guide](https://strapi.io/blog/react-markdown-complete-guide-security-styling) - Security best practices
+
+---
+
+## Cross-Cutting Concerns
+
+### Keyboard Navigation Strategy
+
+Following [Microsoft Keyboard UI Guidelines](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/dnacc/guidelines-for-keyboard-user-interface-design):
+
+| Shortcut | Action | Component |
+|----------|--------|-----------|
+| `Cmd/Ctrl+1` | Switch to Commands view | Activity Bar |
+| `Cmd/Ctrl+2` | Switch to State view | Activity Bar |
+| `Cmd/Ctrl+K` | Open command palette | Command Forms |
+| `Cmd/Ctrl+B` | Toggle sidebar | Activity Bar |
+| `F6` | Cycle between panes | Global |
+| `Arrow Up/Down` | Navigate list/tree | All lists |
+| `Enter` | Select/activate | All lists |
+| `Escape` | Close overlay/cancel | Modals, forms |
+| `Space` | Toggle expand/collapse | Tree View |
+
+### Focus Management
+
+- Tab moves between major regions (activity bar, sidebar, terminal, viewer)
+- Arrow keys move within regions
+- F6 cycles between panes (VSCode pattern)
+- Focus trap in modals/overlays
+
+### Accessibility Checklist
+
+- [ ] All icons have `aria-label`
+- [ ] Tree follows WAI-ARIA treeview pattern
+- [ ] Color not sole status indicator (icons + color)
+- [ ] Focus visible on all interactive elements
+- [ ] Keyboard operable without mouse
+- [ ] Screen reader tested (VoiceOver/NVDA)
+
+---
+
+## Feature Prioritization
+
+| Feature | Category | Priority | Complexity | Notes |
+|---------|----------|----------|------------|-------|
+| Icon sidebar structure | Activity Bar | P1 | LOW | Foundation for view switching |
+| Active state indicator | Activity Bar | P1 | LOW | Essential feedback |
+| Toggle sidebar | Activity Bar | P1 | LOW | Space management |
+| Command search | Forms | P1 | LOW | Already exists |
+| Parameter inputs | Forms | P1 | MEDIUM | Core v1.1 feature |
+| Flag toggles | Forms | P1 | LOW | Simple extension |
+| 3-level tree | Tree | P1 | LOW | Extend existing |
+| Status indicators | Tree | P1 | LOW | Already exists |
+| Markdown rendering | Viewer | P1 | LOW | Standard library |
+| Frontmatter display | Viewer | P1 | LOW | gray-matter parsing |
+| Syntax highlighting | Viewer | P1 | LOW | rehype plugin |
+| Keyboard shortcuts | Global | P2 | MEDIUM | Polish feature |
+| Badge indicators | Activity Bar | P2 | LOW | Nice-to-have |
+| Argument suggestions | Forms | P2 | MEDIUM | Contextual help |
+| Tabbed viewing | Viewer | P2 | MEDIUM | Multi-file workflow |
+| Mermaid diagrams | Viewer | P2 | MEDIUM | GSD uses flowcharts |
+
+---
+
+## Dependencies on Existing Features
+
+| New Feature | Depends On (Existing) | Integration Point |
+|-------------|----------------------|-------------------|
+| Activity Bar | Panel collapse state | Toggle sidebar callback |
+| Command Forms | SlashCommandPicker | Extend with forms |
+| Command Forms | GSD command schema | Parse for params/flags |
+| State Tree | STATE.md parser | Extend for milestones |
+| State Tree | ROADMAP.md parser | Current hierarchy |
+| Viewer | File reading backend | Rust commands |
+| Viewer | Panel system | Right pane integration |
+
+---
+
+## Verification Checklist
+
+- [x] Categories clear (table stakes vs differentiators vs anti-features)
+- [x] Complexity noted for each feature
+- [x] Dependencies on existing features identified
+- [x] Accessibility requirements specified
+- [x] Keyboard navigation patterns defined
+- [x] Sources cited with URLs
+
+---
+
+*Feature research for: v1.1 UI Enhancements (GSD-UI)*
+*Researched: 2026-01-25*
+*Confidence: HIGH (based on official documentation: VSCode, W3C WAI, React ecosystem)*

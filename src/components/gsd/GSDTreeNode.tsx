@@ -1,15 +1,15 @@
 /**
  * Recursive tree node component for GSD visualization
- * Renders phases and plans with expand/collapse, status icons, and progress
+ * Renders milestones, phases, and plans with expand/collapse, status dots, and progress
  */
 
-import React from 'react';
-import { ChevronRight, Circle, CircleCheck, Loader2, Play } from 'lucide-react';
+import React, { useMemo, useCallback } from 'react';
+import { ChevronRight } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { cn } from '@/lib/utils';
 import { useGSDStore } from '@/stores/gsdStore';
-import { getCommandForNode, getCommandLabel } from '@/lib/gsd/commands';
-import { api } from '@/lib/api';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { getMilestoneActionLinks, getPhaseActionLinks } from '@/lib/gsd/commands';
+import { GSDActionLink } from './GSDActionLink';
 import type { TreeNode } from '@/lib/gsd/tree-transforms';
 
 interface TreeNodeProps {
@@ -17,152 +17,167 @@ interface TreeNodeProps {
   depth: number;
   currentPhaseNumber: number;
   projectPath: string | null;
+  isArchived?: boolean; // Inherited from parent for styling
 }
 
 export const GSDTreeNode = React.memo(
-  ({ node, depth, currentPhaseNumber, projectPath }: TreeNodeProps) => {
-    const { expandedNodes, toggleNode, isCommandRunning, setCommandRunning } = useGSDStore();
+  ({ node, depth, currentPhaseNumber, projectPath, isArchived }: TreeNodeProps) => {
+    const { expandedNodes, toggleNode, openFile, openFiles, closeAllTabs, setViewerContext } = useGSDStore();
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children && node.children.length > 0;
+
+    // Determine if this node or its ancestry is archived
+    const isArchivedNode = node.archived || isArchived;
+
+    // Highlight current phase
     const isCurrentPhase =
       node.type === 'phase' && node.id === `phase-${currentPhaseNumber}`;
 
-    // Determine if this node has a clickable command
-    const command = getCommandForNode(node, currentPhaseNumber);
-    const isClickable = command !== null && !isCommandRunning;
-
-    // Command execution handler
-    const handleNodeClick = async (e: React.MouseEvent) => {
-      e.stopPropagation(); // Prevent expand/collapse
-      if (!command || isCommandRunning || !projectPath) return;
-
-      setCommandRunning(command);
-      try {
-        // Send /clear followed by the command
-        await api.executeClaudeCode(projectPath, `/clear\n${command}`, 'sonnet');
-      } catch (error) {
-        console.error('GSD command failed:', error);
-      } finally {
-        setCommandRunning(null);
+    // Get action links for this node (milestones and phases only)
+    const actionLinks = useMemo(() => {
+      if (isArchivedNode) return [];
+      if (node.type === 'milestone') {
+        return getMilestoneActionLinks(node);
       }
-    };
-
-    // Status icon based on node status
-    const StatusIcon = () => {
-      switch (node.status) {
-        case 'complete':
-          return (
-            <CircleCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
-          );
-        case 'in-progress':
-          return (
-            <Loader2 className="w-4 h-4 text-blue-500 animate-spin flex-shrink-0" />
-          );
-        case 'pending':
-          return (
-            <Circle className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
-          );
+      if (node.type === 'phase') {
+        return getPhaseActionLinks(node, currentPhaseNumber);
       }
+      return [];
+    }, [node, currentPhaseNumber, isArchivedNode]);
+
+    // Determine if node should show chevron (has children or action links)
+    const hasExpandableContent = hasChildren || actionLinks.length > 0;
+
+    // Determine if node is clickable (has context files or single filepath)
+    const isClickable = (node.contextFiles && node.contextFiles.length > 0) || !!node.filepath;
+
+    // Handle node click - filter existing files and open with tab reset
+    const handleNodeClick = useCallback(async () => {
+      // Set viewer context based on node label
+      setViewerContext(node.label);
+
+      if (node.contextFiles && node.contextFiles.length > 0) {
+        try {
+          // Filter to only files that exist
+          const existingFiles = await invoke<string[]>('filter_existing_files', {
+            filePaths: node.contextFiles,
+          });
+          if (existingFiles.length > 0) {
+            // Clear existing tabs and open filtered files
+            openFiles(existingFiles, true);
+          } else {
+            // No files exist - clear tabs to show empty state
+            closeAllTabs();
+          }
+        } catch (err) {
+          console.error('Failed to filter files:', err);
+          // Fallback: try opening all files (errors will show in tabs)
+          openFiles(node.contextFiles, true);
+        }
+      } else if (node.filepath) {
+        openFile(node.filepath);
+      }
+    }, [node.contextFiles, node.filepath, node.label, openFile, openFiles, closeAllTabs, setViewerContext]);
+
+    // Status indicator - colored dot only (per CONTEXT.md: "Color-only status, no icons")
+    const StatusDot = ({ status }: { status: 'pending' | 'in-progress' | 'complete' }) => {
+      return (
+        <div
+          className={cn(
+            'w-2 h-2 rounded-full flex-shrink-0',
+            status === 'pending' && 'bg-gray-400',
+            status === 'in-progress' && 'bg-blue-500 animate-pulse',
+            status === 'complete' && 'bg-green-500'
+          )}
+          aria-hidden="true"
+        />
+      );
     };
 
     return (
       <div
         role="treeitem"
-        aria-expanded={hasChildren ? isExpanded : undefined}
+        aria-expanded={hasExpandableContent ? isExpanded : undefined}
       >
         {/* Node row */}
         <div
           className={cn(
-            'group flex items-center gap-2 py-1.5 px-2 rounded',
-            'hover:bg-muted/50 transition-colors',
-            hasChildren && 'cursor-pointer',
-            depth > 0 && 'ml-6',
+            'group flex items-center gap-1.5 py-1 px-1 rounded',
+            !isArchivedNode && 'hover:bg-muted/50 transition-colors',
+            depth > 0 && 'ml-4',
             isCurrentPhase && 'bg-primary/10 border border-primary/30',
-            node.status === 'complete' && 'opacity-60'
+            isArchivedNode && 'opacity-60 cursor-default',
+            !isArchivedNode && node.status === 'complete' && 'opacity-60'
           )}
-          onClick={() => hasChildren && toggleNode(node.id)}
           tabIndex={0}
           onKeyDown={(e) => {
-            if (hasChildren && (e.key === 'Enter' || e.key === ' ')) {
+            if (e.key === 'Enter' && isClickable) {
+              e.preventDefault();
+              handleNodeClick();
+            }
+            if (e.key === ' ' && hasExpandableContent) {
               e.preventDefault();
               toggleNode(node.id);
             }
           }}
         >
-          {/* Chevron for expandable nodes */}
-          {hasChildren ? (
-            <ChevronRight
-              className={cn(
-                'w-4 h-4 transition-transform flex-shrink-0',
-                isExpanded && 'rotate-90'
-              )}
-            />
+          {/* Chevron for expandable nodes - click to expand/collapse */}
+          {hasExpandableContent ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNode(node.id);
+              }}
+              className="p-0.5 -m-0.5 rounded hover:bg-muted"
+              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronRight
+                className={cn(
+                  'w-4 h-4 transition-transform flex-shrink-0',
+                  isExpanded && 'rotate-90'
+                )}
+              />
+            </button>
           ) : (
             <div className="w-4" /> // Spacer for alignment
           )}
 
-          <StatusIcon />
+          {/* Status dot - hidden for archived nodes (always complete, no need to show) */}
+          {!isArchivedNode && <StatusDot status={node.status} />}
 
+          {/* Node label - click to open context files in viewer */}
           <span
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isClickable) {
+                handleNodeClick();
+              }
+            }}
             className={cn(
               'text-sm flex-1 truncate',
+              isClickable && 'cursor-pointer hover:underline',
               node.status === 'complete' && 'text-muted-foreground'
             )}
           >
             {node.label}
           </span>
 
-          {/* Play button for clickable nodes */}
-          {isClickable && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleNodeClick}
-                    disabled={isCommandRunning}
-                    className={cn(
-                      "p-1 rounded hover:bg-muted",
-                      "opacity-0 group-hover:opacity-100 transition-opacity",
-                      isCommandRunning && "opacity-50 cursor-not-allowed"
-                    )}
-                    aria-label={`Execute ${getCommandLabel(command!)}`}
-                  >
-                    <Play className="w-4 h-4 text-primary" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" align="center">
-                  <code className="text-xs">{command}</code>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
-          {/* Progress for phases */}
-          {node.progress && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-muted-foreground">
-                {node.progress.completed}/{node.progress.total}
-              </span>
-              <span className="text-primary font-medium">
-                (
-                {node.progress.total > 0
-                  ? Math.round(
-                      (node.progress.completed / node.progress.total) * 100
-                    )
-                  : 0}
-                %)
-              </span>
-            </div>
+          {/* Progress for milestones and phases (x/total format only) - hidden for archived */}
+          {node.progress && !isArchivedNode && (
+            <span className="text-xs text-muted-foreground">
+              {node.progress.completed}/{node.progress.total}
+            </span>
           )}
         </div>
 
-        {/* Recursive children with connector lines */}
-        {hasChildren && isExpanded && (
+        {/* Recursive children and action links with connector lines */}
+        {hasExpandableContent && isExpanded && (
           <div role="group" className="relative">
             {/* Vertical connector line */}
             <div className="absolute left-[11px] top-0 bottom-2 w-px bg-border" />
 
-            {node.children!.map((child) => (
+            {/* Render child nodes */}
+            {node.children?.map((child) => (
               <div key={child.id} className="relative">
                 {/* Horizontal connector line */}
                 <div className="absolute left-[11px] top-4 w-4 h-px bg-border" />
@@ -171,7 +186,17 @@ export const GSDTreeNode = React.memo(
                   depth={depth + 1}
                   currentPhaseNumber={currentPhaseNumber}
                   projectPath={projectPath}
+                  isArchived={isArchivedNode}
                 />
+              </div>
+            ))}
+
+            {/* Render action links at the bottom */}
+            {actionLinks.map((link) => (
+              <div key={link.id} className="relative">
+                {/* Horizontal connector line */}
+                <div className="absolute left-[11px] top-2.5 w-4 h-px bg-border" />
+                <GSDActionLink link={link} depth={depth + 1} />
               </div>
             ))}
           </div>

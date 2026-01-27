@@ -202,3 +202,269 @@ GSD plugin provides:
 *Researched: 2025-01-24*
 *Researcher: gsd-project-researcher*
 *Verification: All core technology versions confirmed via official sources (GitHub releases, Context7)*
+
+---
+
+# v1.1 UI Enhancements: Stack Additions
+
+**Project:** GSD-UI v1.1
+**Researched:** 2026-01-25
+**Overall Confidence:** HIGH
+
+## Executive Summary
+
+The v1.1 UI enhancements require four specific capabilities: markdown rendering with frontmatter, icon sidebar, and dynamic forms. The existing stack (React 18, Tailwind, Zustand, Radix UI) already provides excellent foundations. Only **two new libraries** are needed: `gray-matter` for YAML frontmatter parsing and `@radix-ui/react-toggle-group` for the icon sidebar. All other capabilities can be achieved with existing dependencies.
+
+---
+
+## Existing Stack Analysis
+
+### Already Installed (No Changes Needed)
+
+| Package | Current Version | Purpose for v1.1 |
+|---------|-----------------|------------------|
+| `react-markdown` | 9.1.0 | Markdown rendering (already used in `StreamMessage.tsx`) |
+| `remark-gfm` | 4.0.1 | GitHub Flavored Markdown (already used) |
+| `react-hook-form` | 7.60.0 | Form state management for command forms |
+| `@hookform/resolvers` | 3.10.0 | Zod integration for form validation |
+| `zod` | 3.25.76 | Schema validation for dynamic forms |
+| `lucide-react` | 0.468.0 | Icons for activity bar (already 76+ files use it) |
+| `zustand` | 5.x | State management for sidebar/panel visibility |
+| `@radix-ui/react-collapsible` | 1.1.12 | Collapsible sections (already used in GSD tree) |
+
+### Existing Patterns to Reuse
+
+1. **Markdown Rendering**: `StreamMessage.tsx` already renders markdown with syntax highlighting using `react-markdown` + `remark-gfm` + `react-syntax-highlighter`
+2. **Frontmatter Parsing**: `parsers.ts` already has a simple regex-based frontmatter parser (lines 170-176) - can extend or replace with gray-matter
+3. **Icon-based UI**: `lucide-react` icons are used consistently throughout the app
+4. **Form Patterns**: `CreateAgent.tsx`, `Settings.tsx` use `react-hook-form` + `zod`
+5. **Panel State**: `gsdStore.ts` already manages panel visibility/width with Zustand persist
+
+---
+
+## Recommended Additions
+
+### 1. gray-matter (YAML Frontmatter Parser)
+
+- **Version:** ^4.0.3
+- **Purpose:** Parse YAML frontmatter from markdown files (PLAN.md, etc.)
+- **Why this one:**
+  - Industry standard used by Gatsby, Astro, Vite, Netlify, TinaCMS
+  - Battle-tested with 2,400+ dependents on npm
+  - Handles complex edge cases (fenced code blocks containing YAML examples)
+  - Zero-config YAML parsing, extensible to JSON/TOML if needed
+  - Does NOT use regex for parsing (faster, more reliable than regex approach)
+- **Integration:** Replaces the existing regex-based frontmatter parser in `parsers.ts`
+- **Confidence:** HIGH - Verified via npm, well-maintained, MIT license
+
+```typescript
+// Usage example
+import matter from 'gray-matter';
+
+const { data, content } = matter(fileContent);
+// data = { phase: "02-visualization", plan: 1 }
+// content = markdown body without frontmatter
+```
+
+### 2. @radix-ui/react-toggle-group (Icon Sidebar)
+
+- **Version:** ^1.1.11
+- **Purpose:** VSCode-style activity bar with icon toggle buttons
+- **Why this one:**
+  - Already using Radix UI ecosystem (consistent styling/patterns)
+  - Proper keyboard navigation (roving tabindex)
+  - Supports single/multiple selection modes
+  - Accessible by default (ARIA labels, focus management)
+  - Works with lucide-react icons
+- **Integration:** Complements existing `@radix-ui/react-collapsible` for sidebar sections
+- **Confidence:** HIGH - Same ecosystem as existing Radix components
+
+```typescript
+// Usage pattern - matches existing Radix patterns
+import * as ToggleGroup from '@radix-ui/react-toggle-group';
+import { FileText, Settings, GitBranch } from 'lucide-react';
+
+<ToggleGroup.Root type="single" value={activeView} onValueChange={setActiveView}>
+  <ToggleGroup.Item value="files"><FileText /></ToggleGroup.Item>
+  <ToggleGroup.Item value="git"><GitBranch /></ToggleGroup.Item>
+  <ToggleGroup.Item value="settings"><Settings /></ToggleGroup.Item>
+</ToggleGroup.Root>
+```
+
+---
+
+## No New Libraries Needed For
+
+### Markdown Rendering (Read-Only)
+- **Use existing:** `react-markdown` 9.1.0 + `remark-gfm` 4.0.1
+- **Why not upgrade:** Current versions are stable and already integrated with syntax highlighting
+- **Pattern:** Copy the rendering pattern from `StreamMessage.tsx` (lines 153-307)
+
+### Dynamic Command Forms
+- **Use existing:** `react-hook-form` + `zod` + `@hookform/resolvers`
+- **Why:** Schema-driven form generation is built-in capability
+- **Pattern:** Define Zod schemas per command, use `zodResolver`, render fields dynamically
+
+```typescript
+// Dynamic form from command schema
+const schema = z.object({
+  projectName: z.string().min(1),
+  phase: z.number().optional(),
+});
+
+const { register, handleSubmit } = useForm({
+  resolver: zodResolver(schema)
+});
+```
+
+### State Tree Visualization
+- **Use existing:** `GSDTreeNode.tsx` pattern + Zustand + `@radix-ui/react-collapsible`
+- **Why:** Already have tree components, just need to connect to different data source
+
+---
+
+## Not Recommended
+
+### @uiw/react-md-editor
+- **Already installed** for CLAUDE.md editing
+- **Don't use for read-only view** - it's an editor, not a renderer
+- Adds unnecessary complexity/bundle size for read-only markdown display
+
+### marked / markdown-it
+- **Why not:** `react-markdown` already installed and integrated
+- Using `dangerouslySetInnerHTML` would lose React component benefits
+- Would require rewriting existing markdown rendering patterns
+
+### Full sidebar libraries (react-pro-sidebar, etc.)
+- **Why not:** Adds unnecessary weight
+- Radix ToggleGroup + Tailwind is simpler and consistent with existing patterns
+- VSCode-style activity bar is just a vertical button group
+
+### @radix-ui/react-icons
+- **Why not:** Already using `lucide-react` with 500+ icons
+- Would create inconsistency mixing icon libraries
+- Lucide has better TypeScript support and tree-shaking
+
+### gray-matter alternatives (front-matter, yaml-front-matter)
+- **Why not:** `gray-matter` has 15x more downloads than alternatives
+- Better maintained (by @jonschlinkert, same author as many build tools)
+- More features (custom delimiters, excerpt extraction)
+
+---
+
+## Version Compatibility Matrix
+
+| Package | Current in Project | Latest Available | Action |
+|---------|-------------------|------------------|--------|
+| `react-markdown` | 9.1.0 | 10.1.0 | Keep current (breaking changes in v10) |
+| `remark-gfm` | 4.0.1 | 4.0.1 | Current |
+| `zod` | 3.25.76 | 4.3.6 | Keep current (v4 has breaking changes) |
+| `react-hook-form` | 7.60.0 | 7.71.1 | Optional upgrade (minor) |
+| `lucide-react` | 0.468.0 | 0.563.0 | Optional upgrade (additive) |
+| `gray-matter` | N/A | 4.0.3 | **ADD NEW** |
+| `@radix-ui/react-toggle-group` | N/A | 1.1.11 | **ADD NEW** |
+
+---
+
+## Installation Command
+
+```bash
+npm install gray-matter@^4.0.3 @radix-ui/react-toggle-group@^1.1.11
+```
+
+---
+
+## Integration Points
+
+### 1. Frontmatter Parsing Integration
+
+**File to modify:** `/src/lib/gsd/parsers.ts`
+
+Replace the regex-based parser (lines 170-176) with gray-matter:
+
+```typescript
+import matter from 'gray-matter';
+
+export function parsePlanMd(content: string, hasSummary: boolean): PlanInfo | null {
+  const { data, content: body } = matter(content);
+
+  const phaseNumber = parseInt(String(data.phase).match(/^(\d+)/)?.[1] || '0', 10);
+  const planNumber = parseInt(String(data.plan), 10);
+
+  // Extract name from <objective> tag in body
+  const objectiveMatch = body.match(/<objective>\s*\n([^\n]+)/);
+  const name = objectiveMatch ? objectiveMatch[1].trim() : `Plan ${planNumber.toString().padStart(2, '0')}`;
+
+  return { phaseNumber, planNumber, name, status: hasSummary ? 'complete' : 'pending' };
+}
+```
+
+### 2. Icon Sidebar Integration
+
+**Create new component:** `/src/components/ui/activity-bar.tsx`
+
+```typescript
+import * as ToggleGroup from '@radix-ui/react-toggle-group';
+import { cn } from '@/lib/utils';
+
+export const ActivityBar = ToggleGroup.Root;
+export const ActivityBarItem = React.forwardRef<...>(({ className, ...props }, ref) => (
+  <ToggleGroup.Item
+    ref={ref}
+    className={cn(
+      "p-3 text-muted-foreground hover:text-foreground",
+      "data-[state=on]:text-primary data-[state=on]:bg-primary/10",
+      className
+    )}
+    {...props}
+  />
+));
+```
+
+### 3. Dynamic Forms Integration
+
+**Pattern for command forms:** Extend existing `gsdStore.ts` with command schema definitions
+
+```typescript
+// Command schema example
+const newProjectSchema = z.object({
+  projectName: z.string().min(1, "Project name required"),
+  description: z.string().optional(),
+});
+
+// Dynamic field renderer based on schema
+function renderFieldsFromSchema(schema: z.ZodObject<any>) {
+  return Object.entries(schema.shape).map(([key, field]) => {
+    // Render appropriate input based on field type
+  });
+}
+```
+
+---
+
+## Confidence Assessment
+
+| Area | Level | Reasoning |
+|------|-------|-----------|
+| Frontmatter (gray-matter) | HIGH | Industry standard, npm verified, clear documentation |
+| Icon Sidebar (Radix ToggleGroup) | HIGH | Same ecosystem as existing components, well-documented |
+| Markdown Rendering | HIGH | Already working in codebase, just reuse patterns |
+| Dynamic Forms | HIGH | Existing libraries already installed and in use |
+
+---
+
+## Sources
+
+- [gray-matter npm](https://www.npmjs.com/package/gray-matter) - Version 4.0.3
+- [gray-matter GitHub](https://github.com/jonschlinkert/gray-matter) - Documentation and usage
+- [NPM Compare: gray-matter vs alternatives](https://npm-compare.com/front-matter,gray-matter,yaml-front-matter)
+- [Radix UI Toggle Group](https://www.radix-ui.com/primitives/docs/components/toggle-group) - Official docs
+- [Radix UI Accessible Icon](https://www.radix-ui.com/primitives/docs/utilities/accessible-icon) - Icon accessibility
+- [React Hook Form + Zod Integration](https://ui.shadcn.com/docs/forms/react-hook-form) - shadcn/ui patterns
+- [Dynamic Forms with Zustand + RHF + Zod](https://medium.com/@rahulshukla_9187/dynamic-forms-in-react-with-zustand-react-hook-form-zod-c866cb4f7a69)
+- [react-markdown vs alternatives comparison](https://npm-compare.com/markdown-it,react-markdown)
+
+---
+*v1.1 Stack Research: UI Enhancements*
+*Researched: 2026-01-25*
+*Researcher: gsd-project-researcher*

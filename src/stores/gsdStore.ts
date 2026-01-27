@@ -3,6 +3,15 @@ import { persist } from 'zustand/middleware';
 import type { StateCreator } from 'zustand';
 import type { TreeNode } from '@/lib/gsd/tree-transforms';
 import type { GSDCommandDefinition } from '@/lib/gsd/command-registry';
+import type { MilestoneInfo } from '@/lib/gsd/parsers';
+
+// File tab interface for viewer
+export interface FileTab {
+  id: string;           // Unique tab ID
+  filepath: string;     // Absolute file path
+  title: string;        // Display name (filename extracted from path)
+  content?: string;     // Cached file content (lazy loaded)
+}
 
 // Types for parsed data
 export interface StateData {
@@ -28,15 +37,23 @@ interface GSDState {
   panelWidth: number;
   isCommandPanelVisible: boolean;
   commandPanelWidth: number;
+  sidebarActiveView: 'commands' | 'state';
 
   // Runtime state (not persisted)
   parsedData: StateData | null;
   phases: PhaseInfo[];
+  milestoneData: MilestoneInfo[];
   treeData: TreeNode[];
+  archivedTreeData: TreeNode[];
   expandedNodes: Set<string>;
   hasHydrated: boolean;
   isLoading: boolean;
   error: string | null;
+
+  // Viewer tab state (runtime only)
+  openTabs: FileTab[];
+  activeTabId: string | null;
+  viewerContext: string | null; // Context label shown in viewer title (e.g., "Phase 9")
 
   // Command execution state (runtime only)
   isCommandRunning: boolean;
@@ -49,6 +66,7 @@ interface GSDState {
   expandedCategories: Set<string>;
   commandDialogOpen: boolean;
   selectedCommand: GSDCommandDefinition | null;
+  commandInitialValues: Record<string, string | number> | null;
   showInactiveCommands: boolean;
 
   // Actions
@@ -56,14 +74,26 @@ interface GSDState {
   setPanelWidth: (width: number) => void;
   toggleCommandPanel: () => void;
   setCommandPanelWidth: (width: number) => void;
+  setSidebarActiveView: (view: 'commands' | 'state') => void;
   updateParsedData: (data: StateData | null) => void;
   setPhases: (phases: PhaseInfo[]) => void;
+  setMilestoneData: (data: MilestoneInfo[]) => void;
   setTreeData: (data: TreeNode[]) => void;
+  setArchivedTreeData: (data: TreeNode[]) => void;
   toggleNode: (nodeId: string) => void;
-  initializeExpanded: (currentPhaseNumber: number) => void;
+  initializeExpanded: (currentPhaseNumber: number, currentPlanNumber?: number, milestoneData?: MilestoneInfo[]) => void;
   setHasHydrated: (value: boolean) => void;
   setLoading: (value: boolean) => void;
   setError: (error: string | null) => void;
+
+  // Viewer tab actions
+  openFile: (filepath: string) => void;
+  openFiles: (filepaths: string[], clearExisting?: boolean) => void;
+  closeAllTabs: () => void;
+  closeTab: (tabId: string) => void;
+  setActiveTab: (tabId: string) => void;
+  updateTabContent: (tabId: string, content: string) => void;
+  setViewerContext: (context: string | null) => void;
 
   // Command execution actions
   setCommandRunning: (command: string | null) => void;
@@ -74,26 +104,34 @@ interface GSDState {
   // Command panel actions
   toggleCategory: (category: string) => void;
   initializeCategories: () => void;
-  openCommandDialog: (command: GSDCommandDefinition) => void;
+  openCommandDialog: (command: GSDCommandDefinition, initialValues?: Record<string, string | number>) => void;
   closeCommandDialog: () => void;
   toggleShowInactiveCommands: () => void;
 }
 
-const gsdStore: StateCreator<GSDState> = (set) => ({
+const gsdStore: StateCreator<GSDState> = (set, get) => ({
   // Initial persisted state
   isPanelVisible: true,
   panelWidth: 75,
   isCommandPanelVisible: true,
   commandPanelWidth: 20,
+  sidebarActiveView: 'commands',
 
   // Initial runtime state
   parsedData: null,
   phases: [],
+  milestoneData: [],
   treeData: [],
+  archivedTreeData: [],
   expandedNodes: new Set<string>(),
   hasHydrated: false,
   isLoading: false,
   error: null,
+
+  // Initial viewer tab state
+  openTabs: [],
+  activeTabId: null,
+  viewerContext: null as string | null,
 
   // Initial command execution state
   isCommandRunning: false,
@@ -106,6 +144,7 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
   expandedCategories: new Set<string>(),
   commandDialogOpen: false,
   selectedCommand: null,
+  commandInitialValues: null,
   showInactiveCommands: true,
 
   // Actions
@@ -113,13 +152,23 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
 
   setPanelWidth: (width: number) => set({ panelWidth: width }),
 
+  setSidebarActiveView: (view: 'commands' | 'state') => set({ sidebarActiveView: view }),
+
   toggleCommandPanel: () => set((state) => {
     const newVisible = !state.isCommandPanelVisible;
-    // Initialize categories when opening command panel
+    // Initialize all 7 categories as expanded when opening command panel
     if (newVisible && state.expandedCategories.size === 0) {
       return {
         isCommandPanelVisible: newVisible,
-        expandedCategories: new Set(['plan'])
+        expandedCategories: new Set([
+          'project-setup',
+          'phase-lifecycle',
+          'roadmap-ops',
+          'milestone-ops',
+          'quick-work',
+          'navigation',
+          'configuration',
+        ])
       };
     }
     return { isCommandPanelVisible: newVisible };
@@ -131,7 +180,11 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
 
   setPhases: (phases: PhaseInfo[]) => set({ phases }),
 
+  setMilestoneData: (data: MilestoneInfo[]) => set({ milestoneData: data }),
+
   setTreeData: (data: TreeNode[]) => set({ treeData: data }),
+
+  setArchivedTreeData: (data: TreeNode[]) => set({ archivedTreeData: data }),
 
   toggleNode: (nodeId: string) =>
     set((state) => {
@@ -144,16 +197,133 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
       return { expandedNodes: newExpanded };
     }),
 
-  initializeExpanded: (currentPhaseNumber: number) =>
-    set(() => ({
-      expandedNodes: new Set([`phase-${currentPhaseNumber}`]),
-    })),
+  initializeExpanded: (currentPhaseNumber: number, _currentPlanNumber?: number, milestoneData?: MilestoneInfo[]) =>
+    set(() => {
+      const expandedSet = new Set<string>();
+
+      // Always expand current phase
+      expandedSet.add(`phase-${currentPhaseNumber}`);
+
+      // Find and expand current milestone (the one containing current phase)
+      if (milestoneData) {
+        const currentMilestone = milestoneData.find(
+          m => !m.archived &&
+               currentPhaseNumber >= m.phaseRange.start &&
+               currentPhaseNumber <= m.phaseRange.end
+        );
+        if (currentMilestone) {
+          expandedSet.add(`milestone-${currentMilestone.number}`);
+        }
+      }
+
+      return { expandedNodes: expandedSet };
+    }),
 
   setHasHydrated: (value: boolean) => set({ hasHydrated: value }),
 
   setLoading: (value: boolean) => set({ isLoading: value }),
 
   setError: (error: string | null) => set({ error }),
+
+  // Viewer tab actions
+  openFile: (filepath: string) => {
+    const state = get();
+    // Check for existing tab with same filepath
+    const existing = state.openTabs.find(t => t.filepath === filepath);
+    if (existing) {
+      // Switch to existing tab instead of creating duplicate
+      // Also ensure panel is visible when opening a file
+      set({ activeTabId: existing.id, isPanelVisible: true });
+      return;
+    }
+
+    // Create new tab
+    const newTab: FileTab = {
+      id: Date.now().toString(),
+      filepath,
+      title: filepath.split('/').pop() || 'Untitled',
+    };
+
+    // Open the file AND ensure the panel is visible
+    set({
+      openTabs: [...state.openTabs, newTab],
+      activeTabId: newTab.id,
+      isPanelVisible: true,
+    });
+  },
+
+  openFiles: (filepaths: string[], clearExisting = false) => {
+    if (filepaths.length === 0) return;
+
+    const state = get();
+    // Start with empty tabs if clearExisting, otherwise keep existing
+    let currentTabs = clearExisting ? [] : [...state.openTabs];
+    let firstNewTabId: string | null = null;
+
+    for (const filepath of filepaths) {
+      // Check for existing tab with same filepath
+      const existing = currentTabs.find(t => t.filepath === filepath);
+      if (existing) {
+        // Already open, track first tab
+        if (!firstNewTabId) firstNewTabId = existing.id;
+        continue;
+      }
+
+      // Create new tab
+      const newTab: FileTab = {
+        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 7),
+        filepath,
+        title: filepath.split('/').pop() || 'Untitled',
+      };
+      currentTabs.push(newTab);
+      if (!firstNewTabId) firstNewTabId = newTab.id;
+    }
+
+    // Set first new tab as active, ensure panel visible
+    set({
+      openTabs: currentTabs,
+      activeTabId: firstNewTabId,
+      isPanelVisible: true,
+    });
+  },
+
+  closeAllTabs: () => set({ openTabs: [], activeTabId: null, viewerContext: null }),
+
+  setViewerContext: (context: string | null) => set({ viewerContext: context }),
+
+  closeTab: (tabId: string) => {
+    const state = get();
+    const closedIndex = state.openTabs.findIndex(t => t.id === tabId);
+    const newTabs = state.openTabs.filter(t => t.id !== tabId);
+
+    if (newTabs.length === 0) {
+      // No tabs left
+      set({ openTabs: [], activeTabId: null });
+      return;
+    }
+
+    if (state.activeTabId === tabId) {
+      // Closing active tab - select adjacent
+      // Prefer next tab (right), fallback to previous (left) if closing last
+      const nextIndex = Math.min(closedIndex, newTabs.length - 1);
+      set({
+        openTabs: newTabs,
+        activeTabId: newTabs[nextIndex].id
+      });
+    } else {
+      // Closing inactive tab - keep current active
+      set({ openTabs: newTabs });
+    }
+  },
+
+  setActiveTab: (tabId: string) => set({ activeTabId: tabId }),
+
+  updateTabContent: (tabId: string, content: string) =>
+    set((state) => ({
+      openTabs: state.openTabs.map(t =>
+        t.id === tabId ? { ...t, content } : t
+      ),
+    })),
 
   // Command execution actions
   setCommandRunning: (command: string | null) =>
@@ -180,14 +350,23 @@ const gsdStore: StateCreator<GSDState> = (set) => ({
 
   initializeCategories: () =>
     set(() => ({
-      expandedCategories: new Set(['plan']),
+      // Default all 7 categories to expanded per CONTEXT.md decision
+      expandedCategories: new Set([
+        'project-setup',
+        'phase-lifecycle',
+        'roadmap-ops',
+        'milestone-ops',
+        'quick-work',
+        'navigation',
+        'configuration',
+      ]),
     })),
 
-  openCommandDialog: (command: GSDCommandDefinition) =>
-    set({ commandDialogOpen: true, selectedCommand: command }),
+  openCommandDialog: (command: GSDCommandDefinition, initialValues?: Record<string, string | number>) =>
+    set({ commandDialogOpen: true, selectedCommand: command, commandInitialValues: initialValues || null }),
 
   closeCommandDialog: () =>
-    set({ commandDialogOpen: false, selectedCommand: null }),
+    set({ commandDialogOpen: false, selectedCommand: null, commandInitialValues: null }),
 
   toggleShowInactiveCommands: () =>
     set((state) => ({ showInactiveCommands: !state.showInactiveCommands })),
@@ -201,6 +380,7 @@ export const useGSDStore = create<GSDState>()(
       panelWidth: state.panelWidth,
       isCommandPanelVisible: state.isCommandPanelVisible,
       commandPanelWidth: state.commandPanelWidth,
+      sidebarActiveView: state.sidebarActiveView,
     }),
     onRehydrateStorage: () => (state) => {
       if (state) {

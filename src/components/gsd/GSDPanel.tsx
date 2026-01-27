@@ -7,7 +7,9 @@ import React from 'react';
 import { useGSDStore } from '@/stores/gsdStore';
 import { ThreePane } from '@/components/ui/three-pane';
 import { GSDCommandPanel } from './GSDCommandPanel';
-import { GSDPanelContent } from './GSDPanelContent';
+import { GSDStatePanel } from './GSDStatePanel';
+import { GSDIconSidebar } from './GSDIconSidebar';
+import { GSDFileViewer } from './viewer/GSDFileViewer';
 import { GSDToggleButton } from './GSDToggleButton';
 import { GSDCommandToggleButton } from './GSDCommandToggleButton';
 import { GSDCommandDialog } from './GSDCommandDialog';
@@ -29,6 +31,7 @@ export function GSDPanel({ children }: GSDPanelProps) {
     isCommandPanelVisible,
     commandPanelWidth,
     setCommandPanelWidth,
+    sidebarActiveView,
     hasHydrated,
   } = useGSDStore();
 
@@ -40,9 +43,20 @@ export function GSDPanel({ children }: GSDPanelProps) {
   return (
     <>
       <ThreePane
-        left={<GSDCommandPanel />}
+        left={
+          <div className="flex h-full">
+            <GSDIconSidebar />
+            <div className="flex-1 overflow-hidden">
+              {sidebarActiveView === 'commands' ? (
+                <GSDCommandPanel />
+              ) : (
+                <GSDStatePanel />
+              )}
+            </div>
+          </div>
+        }
         center={children}
-        right={<GSDPanelContent />}
+        right={<GSDFileViewer />}
         leftWidth={commandPanelWidth}
         rightWidth={panelWidth}
         showLeft={isCommandPanelVisible}
