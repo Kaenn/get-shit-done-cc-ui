@@ -41,6 +41,15 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Build frontend
+        run: bun run build
+
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
@@ -54,22 +63,22 @@ jobs:
         if: matrix.os != 'windows-latest'
         shell: bash
         run: |
-          mkdir -p dist
+          mkdir -p dist-bin
           BINARY="src-tauri/target/${{ matrix.target }}/release/gsd-ui-web"
           ARTIFACT="gsd-ui-web-${{ matrix.name }}"
-          cp "$BINARY" "dist/$ARTIFACT"
-          cd dist
+          cp "$BINARY" "dist-bin/$ARTIFACT"
+          cd dist-bin
           sha256sum "$ARTIFACT" > "$ARTIFACT.sha256"
 
       - name: Prepare artifact (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist
+          New-Item -ItemType Directory -Force -Path dist-bin
           $binary = "src-tauri/target/${{ matrix.target }}/release/gsd-ui-web.exe"
           $artifact = "gsd-ui-web-${{ matrix.name }}.exe"
-          Copy-Item $binary "dist/$artifact"
-          cd dist
+          Copy-Item $binary "dist-bin/$artifact"
+          cd dist-bin
           $hash = (Get-FileHash -Algorithm SHA256 $artifact).Hash.ToLower()
           "$hash  $artifact" | Out-File -Encoding utf8 "$artifact.sha256"
 
@@ -77,5 +86,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: dist/*
+          path: dist-bin/*
           retention-days: 7
