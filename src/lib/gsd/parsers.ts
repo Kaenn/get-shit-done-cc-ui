@@ -40,8 +40,10 @@ export interface MilestoneInfo {
 
 /**
  * Parse STATE.md content into structured data
- * Format example:
+ * Supported formats:
  *   Phase: 1 of 3 (Foundation)
+ *   Phase: 10 complete, Phase 11 ready
+ *   Status: Ready for Phase 11
  *   Plan: 0 of ?
  *   Progress: [░░░░░░░░░░] 0%
  */
@@ -59,12 +61,27 @@ export function parseStateMd(content: string): StateData {
     const lines = content.split('\n');
 
     for (const line of lines) {
-      // Parse "Phase: 1 of 3 (Foundation)"
-      const phaseMatch = line.match(/Phase:\s*(\d+)\s+of\s+(\d+)\s*\(([^)]+)\)/i);
-      if (phaseMatch) {
-        defaultData.currentPhase = parseInt(phaseMatch[1], 10);
-        defaultData.totalPhases = parseInt(phaseMatch[2], 10);
-        defaultData.phaseName = phaseMatch[3].trim();
+      // Format 1: "Phase: 1 of 3 (Foundation)"
+      const phaseOfMatch = line.match(/Phase:\s*(\d+)\s+of\s+(\d+)\s*\(([^)]+)\)/i);
+      if (phaseOfMatch) {
+        defaultData.currentPhase = parseInt(phaseOfMatch[1], 10);
+        defaultData.totalPhases = parseInt(phaseOfMatch[2], 10);
+        defaultData.phaseName = phaseOfMatch[3].trim();
+        continue;
+      }
+
+      // Format 2: "Phase: N complete, Phase M ready" - M is the current phase
+      const phaseReadyMatch = line.match(/Phase:\s*\d+\s+complete,\s*Phase\s+(\d+)\s+ready/i);
+      if (phaseReadyMatch && defaultData.currentPhase === 0) {
+        defaultData.currentPhase = parseInt(phaseReadyMatch[1], 10);
+        continue;
+      }
+
+      // Format 3: "Status: Ready for Phase N" or "Ready for Phase N"
+      const statusReadyMatch = line.match(/(?:Status:\s*)?Ready\s+for\s+Phase\s+(\d+)/i);
+      if (statusReadyMatch && defaultData.currentPhase === 0) {
+        defaultData.currentPhase = parseInt(statusReadyMatch[1], 10);
+        continue;
       }
 
       // Parse "Plan: 0 of ?" or "Plan: 1 of 3"
@@ -72,6 +89,7 @@ export function parseStateMd(content: string): StateData {
       if (planMatch) {
         defaultData.currentPlan = parseInt(planMatch[1], 10);
         defaultData.totalPlans = planMatch[2] === '?' ? null : parseInt(planMatch[2], 10);
+        continue;
       }
 
       // Parse "Progress: [░░░░░░░░░░] 0%" or "Progress: [██░░░░░░░░] 20%"
@@ -342,6 +360,12 @@ export function parseMilestones(content: string, totalPhases: number): Milestone
       }
     }
 
+    // Extend the last in-progress milestone's range if phases exist beyond defined range
+    const inProgressMilestone = milestones.find(m => m.status === 'in-progress' && !m.archived);
+    if (inProgressMilestone && totalPhases > inProgressMilestone.phaseRange.end) {
+      inProgressMilestone.phaseRange.end = totalPhases;
+    }
+
     return milestones;
   } catch (error) {
     console.error('Error parsing milestones:', error);
@@ -355,4 +379,47 @@ export function parseMilestones(content: string, totalPhases: number): Milestone
       phaseRange: { start: 1, end: totalPhases },
     }];
   }
+}
+
+/**
+ * Phase directory info from folder discovery
+ */
+interface PhaseDirectoryInfo {
+  number: number;
+  name: string;
+  dir_name: string;
+}
+
+/**
+ * Merge phases from ROADMAP.md with phases discovered from folder structure
+ * Folder-discovered phases fill in gaps where ROADMAP might be incomplete
+ */
+export function mergeWithFolderPhases(
+  roadmapPhases: PhaseInfo[],
+  folderPhases: PhaseDirectoryInfo[]
+): PhaseInfo[] {
+  // Create a map of existing phases by number
+  const phaseMap = new Map<number, PhaseInfo>();
+  for (const phase of roadmapPhases) {
+    phaseMap.set(phase.number, phase);
+  }
+
+  // Add folder-discovered phases that don't exist in ROADMAP
+  for (const folderPhase of folderPhases) {
+    if (!phaseMap.has(folderPhase.number)) {
+      // Create a new PhaseInfo from folder discovery
+      phaseMap.set(folderPhase.number, {
+        number: folderPhase.number,
+        name: folderPhase.name,
+        goal: '', // No goal available from folder name
+        status: 'pending', // Default to pending
+      });
+    }
+  }
+
+  // Convert map back to sorted array
+  const mergedPhases = Array.from(phaseMap.values());
+  mergedPhases.sort((a, b) => a.number - b.number);
+
+  return mergedPhases;
 }

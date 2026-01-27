@@ -64,29 +64,29 @@ export function GSDCommandDialog() {
       // Check if command has a phase parameter
       const hasPhaseParam = selectedCommand!.parameters.some(p => p.name === 'phase');
 
-      if (hasPhaseParam && projectPath) {
-        // Read current phase from STATE.md (fresh read, not cached)
-        const currentPhase = await readCurrentPhase(projectPath);
-        if (currentPhase !== null) {
-          defaultValues.phase = currentPhase;
-        }
-      }
-
       // Set default values for parameters
-      selectedCommand!.parameters.forEach((param) => {
-        // Skip phase if already set from STATE.md
-        if (param.name === 'phase' && defaultValues.phase !== undefined) {
-          return;
-        }
-
+      // Priority: commandInitialValues > STATE.md > defaultValue > empty
+      for (const param of selectedCommand!.parameters) {
+        // 1. Check if initialValues were passed (e.g., from action link)
         if (commandInitialValues && commandInitialValues[param.name] !== undefined) {
           defaultValues[param.name] = commandInitialValues[param.name];
-        } else if (param.defaultValue !== undefined) {
+        }
+        // 2. For phase parameter without initialValue, read from STATE.md
+        else if (param.name === 'phase' && hasPhaseParam && projectPath) {
+          const currentPhase = await readCurrentPhase(projectPath);
+          if (currentPhase !== null) {
+            defaultValues.phase = currentPhase;
+          }
+        }
+        // 3. Fall back to parameter defaultValue
+        else if (param.defaultValue !== undefined) {
           defaultValues[param.name] = param.defaultValue;
-        } else {
+        }
+        // 4. Default to empty
+        else {
           defaultValues[param.name] = param.type === 'number' ? '' : '';
         }
-      });
+      }
 
       // Set default values for flags (all false by default)
       selectedCommand!.flags.forEach((flag) => {

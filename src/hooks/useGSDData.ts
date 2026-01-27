@@ -7,8 +7,8 @@ import { useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useGSDStore } from '@/stores/gsdStore';
 import type { StateData } from '@/stores/gsdStore';
-import { parseStateMd, parseRoadmapMd, parsePlanMd, parseMilestones } from '@/lib/gsd/parsers';
-import type { PlanInfo } from '@/lib/gsd/parsers';
+import { parseStateMd, parseRoadmapMd, parsePlanMd, parseMilestones, mergeWithFolderPhases } from '@/lib/gsd/parsers';
+import type { PlanInfo, PhaseInfo } from '@/lib/gsd/parsers';
 import { buildTreeData, buildMilestoneTree } from '@/lib/gsd/tree-transforms';
 import type { TreeNode } from '@/lib/gsd/tree-transforms';
 import { useGSDFileWatcher } from '@/lib/gsd/watcher';
@@ -25,6 +25,20 @@ interface PlanFileData {
   has_summary: boolean;
   phase_dir: string;
   filename: string;
+}
+
+interface PhaseDirectoryInfo {
+  number: number;
+  name: string;
+  dir_name: string;
+}
+
+interface PhaseStatusInfo {
+  number: number;
+  dir_name: string;
+  context_ready: boolean;
+  has_plans: boolean;
+  has_verification: boolean;
 }
 
 /**
@@ -84,23 +98,34 @@ export function useGSDData(projectPath: string | null): void {
       }
 
       // Parse ROADMAP.md for phases and milestones
-      let phases: ReturnType<typeof parseRoadmapMd> = [];
+      let phases: PhaseInfo[] = [];
       if (result.roadmap_content) {
         phases = parseRoadmapMd(result.roadmap_content);
-        setPhases(phases);
+      }
 
-        // Parse milestones from same ROADMAP.md content
-        const milestones = parseMilestones(result.roadmap_content, phases.length);
+      // Discover phases from folder structure (more robust than ROADMAP alone)
+      const folderPhases = await invoke<PhaseDirectoryInfo[]>('list_gsd_phase_directories', {
+        projectPath,
+      });
+
+      // Merge ROADMAP phases with folder-discovered phases
+      phases = mergeWithFolderPhases(phases, folderPhases);
+      setPhases(phases);
+
+      // Parse milestones and extend ranges if phases exist beyond defined ranges
+      if (result.roadmap_content) {
+        const maxPhaseNumber = phases.length > 0 ? Math.max(...phases.map(p => p.number)) : 0;
+        const milestones = parseMilestones(result.roadmap_content, maxPhaseNumber);
         setMilestoneData(milestones);
       } else {
-        setPhases([]);
         setMilestoneData([]);
       }
 
-      // Load plan files from Rust backend
-      const planFiles = await invoke<PlanFileData[]>('read_gsd_plan_files', {
-        projectPath,
-      });
+      // Load plan files and phase status from Rust backend in parallel
+      const [planFiles, phaseStatuses] = await Promise.all([
+        invoke<PlanFileData[]>('read_gsd_plan_files', { projectPath }),
+        invoke<PhaseStatusInfo[]>('get_gsd_phase_status', { projectPath }),
+      ]);
 
       // Parse each plan file
       const plans: PlanInfo[] = [];
@@ -119,13 +144,14 @@ export function useGSDData(projectPath: string | null): void {
           phases,
           plans,
           currentPhaseNumber,
-          projectPath
+          projectPath,
+          phaseStatuses
         );
         setTreeData(active);
         setArchivedTreeData(archived);
       } else {
         // Fallback to 2-level tree if no phases
-        const treeData = buildTreeData(phases, plans, currentPhaseNumber, projectPath);
+        const treeData = buildTreeData(phases, plans, currentPhaseNumber, projectPath, phaseStatuses);
         setTreeData(treeData);
         setArchivedTreeData([]);
       }

@@ -85,18 +85,11 @@ export function getPhaseActionLinks(
 
   const links: ActionLink[] = [];
 
-  // Check if phase has any plans
-  const plans = node.children || [];
-  const hasPlans = plans.length > 0;
-  const hasInProgressOrCompletePlans = plans.some(
-    (p) => p.status === 'in-progress' || p.status === 'complete'
-  );
-  const hasIncompletePlans = plans.some(
-    (p) => p.status === 'pending' || p.status === 'in-progress'
-  );
+  // Get phase status from metadata (from backend file checks)
+  const phaseStatus = node.metadata?.phaseStatus;
 
-  // discuss-phase: show if phase hasn't been planned yet (no plans or all pending)
-  if (!hasInProgressOrCompletePlans) {
+  // discuss-phase: show if CONTEXT.md doesn't have "**Status:** Ready for planning"
+  if (!phaseStatus?.contextReady) {
     links.push({
       id: `discuss-phase-${phaseNumber}`,
       label: 'discuss phase...',
@@ -105,8 +98,8 @@ export function getPhaseActionLinks(
     });
   }
 
-  // plan-phase: show if phase has no plans or has pending plans
-  if (!hasPlans || plans.some((p) => p.status === 'pending')) {
+  // plan-phase: show if no PLAN files exist in phase folder
+  if (!phaseStatus?.hasPlans) {
     links.push({
       id: `plan-phase-${phaseNumber}`,
       label: 'plan phase...',
@@ -115,8 +108,8 @@ export function getPhaseActionLinks(
     });
   }
 
-  // execute-phase: show if phase has plans that need execution
-  if (hasIncompletePlans && hasPlans) {
+  // execute-phase: show if plans exist AND no VERIFICATION.md file exists
+  if (phaseStatus?.hasPlans && !phaseStatus?.hasVerification) {
     links.push({
       id: `execute-phase-${phaseNumber}`,
       label: 'execute phase...',
@@ -129,10 +122,26 @@ export function getPhaseActionLinks(
 }
 
 /**
+ * Find a phase node recursively in the tree (handles milestone > phase > plan structure)
+ */
+function findPhaseNode(nodes: TreeNode[], phaseId: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.id === phaseId) {
+      return node;
+    }
+    if (node.children) {
+      const found = findPhaseNode(node.children, phaseId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
  * Get the next action for the current phase
  * Determines the appropriate command based on phase state
  *
- * @param nodes - Tree data (phase nodes with plan children)
+ * @param nodes - Tree data (milestone nodes with phase children)
  * @param currentPhaseNumber - Current phase number from STATE.md
  * @returns Next action object or null if no action available
  */
@@ -140,48 +149,42 @@ export function getNextAction(
   nodes: TreeNode[],
   currentPhaseNumber: number
 ): { command: string; label: string } | null {
-  // Find current phase node
-  const currentPhase = nodes.find(
-    (n) => n.id === `phase-${currentPhaseNumber}`
-  );
+  // Find current phase node (recursively search through milestones)
+  const currentPhase = findPhaseNode(nodes, `phase-${currentPhaseNumber}`);
 
   if (!currentPhase) {
     return null;
   }
-
-  const plans = currentPhase.children || [];
 
   // If phase is complete, no action needed
   if (currentPhase.status === 'complete') {
     return null;
   }
 
-  // Check plan states
-  const hasPlans = plans.length > 0;
-  const hasPendingPlans = plans.some((p) => p.status === 'pending');
-  const hasInProgressPlans = plans.some((p) => p.status === 'in-progress');
+  // Get phase status from metadata (from backend file checks)
+  const phaseStatus = currentPhase.metadata?.phaseStatus;
 
-  // If there are in-progress plans, execute
-  if (hasInProgressPlans) {
+  // Priority 1: discuss if context not ready
+  if (!phaseStatus?.contextReady) {
+    return {
+      command: `/gsd:discuss-phase ${currentPhaseNumber}`,
+      label: `Discuss Phase ${currentPhaseNumber}`,
+    };
+  }
+
+  // Priority 2: plan if no plans exist
+  if (!phaseStatus?.hasPlans) {
+    return {
+      command: `/gsd:plan-phase ${currentPhaseNumber}`,
+      label: `Plan Phase ${currentPhaseNumber}`,
+    };
+  }
+
+  // Priority 3: execute if plans exist but no verification
+  if (phaseStatus?.hasPlans && !phaseStatus?.hasVerification) {
     return {
       command: `/gsd:execute-phase ${currentPhaseNumber}`,
       label: `Execute Phase ${currentPhaseNumber}`,
-    };
-  }
-
-  // If there are pending plans (but none in progress), plan them
-  if (hasPendingPlans) {
-    return {
-      command: `/gsd:plan-phase ${currentPhaseNumber}`,
-      label: `Plan Phase ${currentPhaseNumber}`,
-    };
-  }
-
-  // If no plans at all, suggest planning
-  if (!hasPlans) {
-    return {
-      command: `/gsd:plan-phase ${currentPhaseNumber}`,
-      label: `Plan Phase ${currentPhaseNumber}`,
     };
   }
 

@@ -2319,6 +2319,150 @@ pub async fn read_gsd_plan_files(project_path: String) -> Result<Vec<PlanFileDat
     Ok(plan_files)
 }
 
+/// Phase directory info extracted from folder names
+#[derive(Debug, Serialize, Clone)]
+pub struct PhaseDirectoryInfo {
+    pub number: u32,
+    pub name: String,
+    pub dir_name: String,
+}
+
+/// Lists all phase directories in .planning/phases/
+/// Returns phase info extracted from directory names (format: NN-phase-name)
+#[tauri::command]
+pub async fn list_gsd_phase_directories(project_path: String) -> Result<Vec<PhaseDirectoryInfo>, String> {
+    log::info!("Listing GSD phase directories from: {}", project_path);
+
+    let phases_path = PathBuf::from(&project_path).join(".planning").join("phases");
+
+    if !phases_path.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut phase_dirs = Vec::new();
+
+    let entries = fs::read_dir(&phases_path)
+        .map_err(|e| format!("Failed to read phases directory: {}", e))?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let dir_name = entry.file_name().to_string_lossy().to_string();
+
+        // Parse directory name format: NN-phase-name (e.g., "11-npx-installation")
+        if let Some(dash_pos) = dir_name.find('-') {
+            if let Ok(number) = dir_name[..dash_pos].parse::<u32>() {
+                // Convert kebab-case to title case: "npx-installation" -> "npx Installation"
+                let name_part = &dir_name[dash_pos + 1..];
+                let name = name_part
+                    .split('-')
+                    .map(|word| {
+                        let mut chars = word.chars();
+                        match chars.next() {
+                            None => String::new(),
+                            Some(first) => first.to_uppercase().chain(chars).collect(),
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                phase_dirs.push(PhaseDirectoryInfo {
+                    number,
+                    name,
+                    dir_name,
+                });
+            }
+        }
+    }
+
+    // Sort by phase number
+    phase_dirs.sort_by_key(|p| p.number);
+
+    Ok(phase_dirs)
+}
+
+/// Phase status info for action link determination
+#[derive(Debug, Serialize, Clone)]
+pub struct PhaseStatusInfo {
+    pub number: u32,
+    pub dir_name: String,
+    pub context_ready: bool,      // CONTEXT.md has "**Status:** Ready for planning"
+    pub has_plans: bool,          // Has any *-PLAN.md files
+    pub has_verification: bool,   // Has *-VERIFICATION.md file
+}
+
+/// Gets status info for all phases to determine available actions
+/// Checks for CONTEXT.md status, PLAN files, and VERIFICATION.md
+#[tauri::command]
+pub async fn get_gsd_phase_status(project_path: String) -> Result<Vec<PhaseStatusInfo>, String> {
+    log::info!("Getting GSD phase status from: {}", project_path);
+
+    let phases_path = PathBuf::from(&project_path).join(".planning").join("phases");
+
+    if !phases_path.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut phase_statuses = Vec::new();
+
+    let entries = fs::read_dir(&phases_path)
+        .map_err(|e| format!("Failed to read phases directory: {}", e))?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let dir_name = entry.file_name().to_string_lossy().to_string();
+
+        // Parse phase number from directory name (e.g., "10-command-forms")
+        let Some(dash_pos) = dir_name.find('-') else { continue };
+        let Ok(number) = dir_name[..dash_pos].parse::<u32>() else { continue };
+
+        // Check CONTEXT.md for "**Status:** Ready for planning"
+        let context_path = path.join(format!("{}-CONTEXT.md", number));
+        let context_ready = if context_path.exists() {
+            if let Ok(content) = fs::read_to_string(&context_path) {
+                content.contains("**Status:** Ready for planning")
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        // Check for any *-PLAN.md files
+        let has_plans = if let Ok(phase_entries) = fs::read_dir(&path) {
+            phase_entries
+                .flatten()
+                .any(|e| e.file_name().to_string_lossy().ends_with("-PLAN.md"))
+        } else {
+            false
+        };
+
+        // Check for VERIFICATION.md file
+        let verification_path = path.join(format!("{}-VERIFICATION.md", number));
+        let has_verification = verification_path.exists();
+
+        phase_statuses.push(PhaseStatusInfo {
+            number,
+            dir_name,
+            context_ready,
+            has_plans,
+            has_verification,
+        });
+    }
+
+    // Sort by phase number
+    phase_statuses.sort_by_key(|p| p.number);
+
+    Ok(phase_statuses)
+}
+
 /// Reads a text file from an absolute path
 /// Used by the file viewer to load markdown files through Tauri backend
 #[tauri::command]

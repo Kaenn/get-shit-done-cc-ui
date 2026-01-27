@@ -10,6 +10,12 @@ export interface TreeNodeProgress {
   total: number;
 }
 
+export interface PhaseStatusInfo {
+  contextReady: boolean;      // CONTEXT.md has "**Status:** Ready for planning"
+  hasPlans: boolean;          // Has any *-PLAN.md files
+  hasVerification: boolean;   // Has *-VERIFICATION.md file
+}
+
 export interface TreeNode {
   id: string; // 'milestone-10', 'phase-1', 'plan-1-01'
   type: 'milestone' | 'phase' | 'plan';
@@ -23,6 +29,7 @@ export interface TreeNode {
     goal?: string; // Phase or milestone goal
     description?: string; // Plan description (name)
     phaseDir?: string; // Phase directory name for file path generation
+    phaseStatus?: PhaseStatusInfo; // Phase action status info (for phases only)
   };
   children?: TreeNode[];
 }
@@ -38,19 +45,32 @@ function getPhaseDirectoryName(phase: PhaseInfo): string {
 }
 
 /**
+ * Phase status info from Rust backend
+ */
+interface PhaseStatusFromBackend {
+  number: number;
+  dir_name: string;
+  context_ready: boolean;
+  has_plans: boolean;
+  has_verification: boolean;
+}
+
+/**
  * Build hierarchical tree data from phases and plans
  *
  * @param phases - Phase info from ROADMAP.md
  * @param plans - Plan info from PLAN.md files
  * @param currentPhaseNumber - Current phase from STATE.md
  * @param projectPath - Optional project path for filepath generation
+ * @param phaseStatuses - Optional phase status info from backend
  * @returns Array of phase TreeNodes with plan children
  */
 export function buildTreeData(
   phases: PhaseInfo[],
   plans: PlanInfo[],
   currentPhaseNumber: number,
-  projectPath?: string
+  projectPath?: string,
+  phaseStatuses?: PhaseStatusFromBackend[]
 ): TreeNode[] {
   return phases.map((phase) => {
     // Filter plans belonging to this phase
@@ -127,6 +147,16 @@ export function buildTreeData(
       phaseContextFiles.push(`${basePath}/${phasePadded}-VERIFICATION.md`);
     }
 
+    // Look up phase status from backend data
+    const backendStatus = phaseStatuses?.find(s => s.number === phase.number);
+    const phaseStatus: PhaseStatusInfo | undefined = backendStatus
+      ? {
+          contextReady: backendStatus.context_ready,
+          hasPlans: backendStatus.has_plans,
+          hasVerification: backendStatus.has_verification,
+        }
+      : undefined;
+
     return {
       id: `phase-${phase.number}`,
       type: 'phase' as const,
@@ -140,6 +170,7 @@ export function buildTreeData(
       metadata: {
         goal: phase.goal,
         phaseDir: phaseDirName,
+        phaseStatus,
       },
       children,
     };
@@ -173,6 +204,7 @@ function calculateMilestoneProgress(
  * @param plans - Plan info from PLAN.md files
  * @param currentPhaseNumber - Current phase from STATE.md
  * @param projectPath - Project path for filepath generation
+ * @param phaseStatuses - Optional phase status info from backend
  * @returns Object with active and archived milestone trees
  */
 export function buildMilestoneTree(
@@ -180,7 +212,8 @@ export function buildMilestoneTree(
   phases: PhaseInfo[],
   plans: PlanInfo[],
   currentPhaseNumber: number,
-  projectPath: string
+  projectPath: string,
+  phaseStatuses?: PhaseStatusFromBackend[]
 ): { active: TreeNode[]; archived: TreeNode[] } {
   const active: TreeNode[] = [];
   const archived: TreeNode[] = [];
@@ -197,7 +230,8 @@ export function buildMilestoneTree(
       milestonePhases,
       plans,
       currentPhaseNumber,
-      projectPath
+      projectPath,
+      phaseStatuses
     );
 
     // Calculate milestone progress
