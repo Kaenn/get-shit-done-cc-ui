@@ -36,13 +36,14 @@ jobs:
           target: ${{ matrix.target }}
           args: "--release --locked --bin gsd-ui-web"
           strip: true
+          working-directory: src-tauri
 
       - name: Prepare artifact (Unix)
         if: matrix.os != 'windows-latest'
         shell: bash
         run: |
           mkdir -p dist
-          BINARY="target/${{ matrix.target }}/release/gsd-ui-web"
+          BINARY="src-tauri/target/${{ matrix.target }}/release/gsd-ui-web"
           ARTIFACT="gsd-ui-web-${{ matrix.name }}"
           cp "$BINARY" "dist/$ARTIFACT"
           cd dist
@@ -53,7 +54,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          $binary = "target/${{ matrix.target }}/release/gsd-ui-web.exe"
+          $binary = "src-tauri/target/${{ matrix.target }}/release/gsd-ui-web.exe"
           $artifact = "gsd-ui-web-${{ matrix.name }}.exe"
           Copy-Item $binary "dist/$artifact"
           cd dist
