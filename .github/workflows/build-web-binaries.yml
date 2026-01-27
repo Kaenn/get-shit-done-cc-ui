@@ -55,7 +55,7 @@ jobs:
         with:
           command: build
           target: ${{ matrix.target }}
-          args: "--release --locked --bin gsd-ui-web"
+          args: "--release --bin gsd-ui-web"
           strip: true
           working-directory: src-tauri
 
