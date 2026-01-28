@@ -181,10 +181,11 @@ async function downloadBinary() {
   const isWindows = binaryName.endsWith('.exe');
   const outputName = isWindows ? 'gsd-ui-web.exe' : 'gsd-ui-web';
 
-  const binDir = path.join(__dirname, '..', 'bin');
+  // Use cache directory if set (for npx persistence), otherwise package bin
+  const binDir = process.env.GSD_CACHE_DIR || path.join(__dirname, '..', 'bin');
   const binaryPath = path.join(binDir, outputName);
 
-  // Ensure bin directory exists
+  // Ensure directory exists
   if (!fs.existsSync(binDir)) {
     fs.mkdirSync(binDir, { recursive: true });
   }

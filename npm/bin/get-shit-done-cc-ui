@@ -1,26 +1,33 @@
 #!/bin/sh
-# Resolve the actual package directory (not .bin symlink)
-PACKAGE_DIR="$(dirname "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")")"
+# Use persistent cache directory (survives npx temp cleanup)
+CACHE_DIR="${HOME}/.cache/get-shit-done-cc-ui"
+BINARY="$CACHE_DIR/gsd-ui-web"
 
-# If still in .bin, find the actual package
+# Resolve package directory for download script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PACKAGE_DIR="$(dirname "$SCRIPT_DIR")"
+
+# If we're in .bin symlink, find actual package
 if echo "$PACKAGE_DIR" | grep -q "node_modules$"; then
   PACKAGE_DIR="$PACKAGE_DIR/get-shit-done-cc-ui"
 fi
 
-BINARY="$PACKAGE_DIR/bin/gsd-ui-web"
 DOWNLOAD_SCRIPT="$PACKAGE_DIR/lib/download.js"
 
-# Check if binary exists
+# Create cache directory
+mkdir -p "$CACHE_DIR"
+
+# Check if binary exists in cache
 if [ ! -f "$BINARY" ]; then
   echo "Binary not found. Downloading for your platform..."
+  # Set cache dir for download script
+  export GSD_CACHE_DIR="$CACHE_DIR"
   node "$DOWNLOAD_SCRIPT"
   DOWNLOAD_EXIT=$?
   if [ $DOWNLOAD_EXIT -ne 0 ]; then
     exit $DOWNLOAD_EXIT
   fi
-  echo ""
-  echo "Download complete! Run 'npx get-shit-done-cc-ui' again to start."
-  exit 0
 fi
 
+# Run the binary
 exec "$BINARY" "$@"
