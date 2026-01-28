@@ -2,10 +2,11 @@ use axum::extract::ws::{Message, WebSocket};
 use axum::http::Method;
 use axum::{
     extract::{Path, State as AxumState, WebSocketUpgrade},
-    response::{Html, Json, Response},
+    response::{Html, IntoResponse, Json, Response},
     routing::get,
     Router,
 };
+use rust_embed::Embed;
 use chrono;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -15,10 +16,15 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::services::ServeDir;
 use which;
 
 use crate::commands;
+
+/// Embedded frontend assets - compiled into the binary
+#[derive(Embed)]
+#[folder = "../dist"]
+#[prefix = ""]
+struct Assets;
 
 // Find Claude binary for web mode - use bundled binary first
 fn find_claude_binary_web() -> Result<String, String> {
@@ -106,9 +112,56 @@ impl<T> ApiResponse<T> {
     }
 }
 
+/// Get MIME type from file extension
+fn get_mime_type(path: &str) -> &'static str {
+    match path.rsplit('.').next() {
+        Some("html") => "text/html",
+        Some("css") => "text/css",
+        Some("js") => "application/javascript",
+        Some("json") => "application/json",
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("ico") => "image/x-icon",
+        Some("woff") => "font/woff",
+        Some("woff2") => "font/woff2",
+        Some("ttf") => "font/ttf",
+        Some("eot") => "application/vnd.ms-fontobject",
+        Some("webp") => "image/webp",
+        Some("mp4") => "video/mp4",
+        Some("webm") => "video/webm",
+        Some("mp3") => "audio/mpeg",
+        Some("wav") => "audio/wav",
+        _ => "application/octet-stream",
+    }
+}
+
+/// Serve embedded static assets
+async fn serve_static(Path(path): Path<String>) -> impl IntoResponse {
+    let path = path.trim_start_matches('/');
+    match Assets::get(path) {
+        Some(content) => {
+            let mime = get_mime_type(path);
+            (
+                [(axum::http::header::CONTENT_TYPE, mime)],
+                content.data.into_owned(),
+            )
+                .into_response()
+        }
+        None => axum::http::StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
 /// Serve the React frontend
-async fn serve_frontend() -> Html<&'static str> {
-    Html(include_str!("../../dist/index.html"))
+async fn serve_frontend() -> impl IntoResponse {
+    match Assets::get("index.html") {
+        Some(content) => {
+            let html = String::from_utf8_lossy(&content.data);
+            Html(html.into_owned()).into_response()
+        }
+        None => axum::http::StatusCode::NOT_FOUND.into_response(),
+    }
 }
 
 /// API endpoint to get projects (equivalent to Tauri command)
@@ -822,9 +875,13 @@ pub async fn create_web_server(port: u16) -> Result<(), Box<dyn std::error::Erro
         )
         // WebSocket endpoint for real-time Claude execution
         .route("/ws/claude", get(claude_websocket))
-        // Serve static assets
-        .nest_service("/assets", ServeDir::new("../dist/assets"))
-        .nest_service("/vite.svg", ServeDir::new("../dist/vite.svg"))
+        // Serve embedded static assets
+        .route("/assets/{*path}", get(|Path(path): Path<String>| async move {
+            serve_static(Path(format!("assets/{}", path))).await
+        }))
+        .route("/vite.svg", get(|| async {
+            serve_static(Path("vite.svg".to_string())).await
+        }))
         .layer(cors)
         .with_state(state);
 
